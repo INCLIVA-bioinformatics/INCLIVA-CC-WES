@@ -52,7 +52,8 @@ heatmap_legend_param = list(title = "Mutation stage", at = c("R", "RB", "B"),
                             labels = c("ONLY IN THE PATIENT", "IN THE PATIENT AND IN THE ORGANOID", "ONLY IN THE ORGANOID"), direction = "horizontal")
 column_title = "TARGETEABLE MUTATIONS CC PATIENTS - ORGANOID MODELS"
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG10B.svg", width = 8, height = 9)
+#svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG10B.svg", width = 8, height = 9)
+postscript(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG10B.eps", width = 8, height = 9)
 
 plot_t =  oncoPrint(m,
                     alter_fun = alter_fun, col = col, 

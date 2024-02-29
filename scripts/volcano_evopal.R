@@ -45,11 +45,11 @@ ggplot(data=de, aes(x=LOG2, y=-log10(pvalue), col=diffexpressed, label=delabel))
   scale_color_manual(values=c("black", "#3C5488FF", "#E64B35FF")) +
   geom_vline(xintercept=c(-0.6, 0.6), col="red") +
   geom_hline(yintercept=-log10(0.05), col="red") +
-  theme(plot.title = element_text(size = 14, face = "bold"),
+  theme(plot.title = element_text(size = 25, face = "bold"),
         legend.title = element_blank(),
-        legend.text=element_text(size=14),
-        axis.text=element_text(size=14),
-        axis.title=element_text(size=14))
+        legend.text=element_text(size=25),
+        axis.text=element_text(size=15),
+        axis.title=element_text(size=25))
 dev.off()
 
 
@@ -99,9 +99,9 @@ ggplot(data=de, aes(x=LOG2, y=-log10(pvalue), col=diffexpressed, label=delabel))
   scale_color_manual(values=c("black", "#3C5488FF", "#E64B35FF")) +
   geom_vline(xintercept=c(-0.6, 0.6), col="red") +
   geom_hline(yintercept=-log10(0.05), col="red") +
-  theme(plot.title = element_text(size = 14, face = "bold"),
+  theme(plot.title = element_text(size = 25, face = "bold"),
         legend.title = element_blank(),
-        legend.text=element_text(size=14),
-        axis.text=element_text(size=14),
-        axis.title=element_text(size=14))
+        legend.text=element_text(size=25),
+        axis.text=element_text(size=15),
+        axis.title=element_text(size=25))
 dev.off()

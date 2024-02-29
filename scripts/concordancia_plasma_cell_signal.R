@@ -33,7 +33,13 @@ ggplot(merged_df, aes(x = CONCORDANCIA, y = Plasma.cells
   labs(x = "Mutational Concordance (Baseline Vs Relapse)", y = "Activated B cells") +
   theme_minimal() +
   theme(legend.position = "none",
-        panel.border = element_rect(color = "black", fill = NA, size = 1)) +  
+        panel.border = element_rect(color = "black", fill = NA, size = 1),
+        plot.title = element_text(size = 20, face = "bold"),
+        legend.title=element_blank(),
+        legend.text=element_text(size=20),
+        axis.text=element_text(size=12),
+        axis.title.x=element_text(size=20),
+        axis.title.y=element_text(size=20)) +  
   geom_smooth(method = "lm", se = TRUE, color = "black", alpha = 0.2) + 
   geom_text(x = max(merged_df$CONCORDANCIA), y = min(merged_df$Plasma.cells),
             label = "p-value = 0.0366",

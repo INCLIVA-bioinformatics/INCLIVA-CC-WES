@@ -17,14 +17,15 @@ vafs <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG2B.c
 vafs$PORC = vafs$PORC*100
 
 svg(file="/home/jmartin/Documents/articulo/scripts/figuras/FIG2B.svg", width = 15, height = 10)
+
 p <- ggplot(vafs, aes(x=TIPO, y=PORC, color=TIPO, )) + 
   geom_violin() + stat_summary(fun.data=data_summary) + theme_bw() + ylim(0,100) + 
   stat_compare_means( aes(label = ..p.signif..), method = "wilcox.test", paired = TRUE, label.x = 1.5, label.y = 100) +
   geom_line(aes(group = ID), color = "grey") + scale_color_manual(values=c("#3C5488FF", "#E64B35FF")) + ylab("% of concordance") + 
-  theme(plot.title = element_text(size = 20, face = "bold"),
+  theme(plot.title = element_text(size = 25, face = "bold"),
         legend.position = "none",
-        axis.text=element_text(size=15),
-        axis.title=element_text(size=20,face="bold"),
+        axis.text=element_text(size=25),
+        axis.title=element_text(size=25,face="bold"),
         axis.title.x=element_blank())
 p
 dev.off()
@@ -39,15 +40,16 @@ vafs <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG2C.c
 vafs$PORC = vafs$PORC*100
 
 svg(file="/home/jmartin/Documents/articulo/scripts/figuras/FIG2C.svg", width = 15, height = 10)
+
 p <- ggplot(vafs, aes(x=TIPO, y=PORC, color=TIPO, )) + 
   geom_violin() + stat_summary(fun.data=data_summary) + theme_bw() + ylim(0,100) + 
   stat_compare_means( aes(label = ..p.signif..), method = "wilcox.test", paired = TRUE, label.x = 1.5, label.y = 100) +
   geom_line(aes(group = ID), color = "grey") + scale_color_manual(values=c("#3C5488FF", "#E64B35FF")) +
   ylab("% of concordance") + 
-  theme(plot.title = element_text(size = 20, face = "bold"),
+  theme(plot.title = element_text(size = 25, face = "bold"),
         legend.position = "none",
-        axis.text=element_text(size=15),
-        axis.title=element_text(size=20,face="bold"),
+        axis.text=element_text(size=25),
+        axis.title=element_text(size=25,face="bold"),
         axis.title.x=element_blank())
 p
 dev.off()
@@ -64,11 +66,11 @@ vafs$PORC = vafs$PORC*100
 svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG1A.svg", width = 14, height = 10)
 p <- ggplot(vafs, aes(x=TIPO, y=PORC, color=TIPO)) + 
   geom_violin() + stat_summary(fun.data=data_summary) + theme_bw() + ylim(0, 100) + scale_colour_manual(values =c("steelblue","salmon","darkolivegreen3")) +
-  ylab("PERCENTAGE OF CONCORDANCE") + 
-  theme(plot.title = element_text(size = 20, face = "bold"),
+  ylab("% of concordance") + 
+  theme(plot.title = element_text(size = 25, face = "bold"),
         legend.position = "none",
-        axis.text=element_text(size=15), axis.title.x=element_blank(),
-        axis.title=element_text(size=16,face="bold"))
+        axis.text=element_text(size=25), axis.title.x=element_blank(),
+        axis.title=element_text(size=25,face="bold"))
 p
 dev.off()
 
@@ -87,10 +89,10 @@ p <- ggplot(vafs, aes(x=TIPO, y=PORC, color=TIPO, )) +
   geom_violin() + stat_summary(fun.data=data_summary) + theme_bw() + ylim(0,100) + 
   stat_compare_means( aes(label = ..p.signif..), method = "wilcox.test", paired = TRUE, label.x = 1.5, label.y = 100) +
   geom_line(aes(group = ID), color = "grey") + scale_color_manual(values=c("#3C5488FF", "#E64B35FF")) + ylab("% of concordance") + 
-  theme(plot.title = element_text(size = 20, face = "bold"),
+  theme(plot.title = element_text(size = 25, face = "bold"),
         legend.position = "none",
-        axis.text=element_text(size=15),
-        axis.title=element_text(size=20,face="bold"),
+        axis.text=element_text(size=25),
+        axis.title=element_text(size=25,face="bold"),
         axis.title.x=element_blank())
 p
 dev.off()
@@ -105,13 +107,13 @@ vafs <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FI
 svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG3.svg", width = 11, height = 10)
 p <- ggplot(vafs, aes(x=TIPO, y=CONCORDANCE, fill = TIPO)) + 
   geom_boxplot() + theme_bw() +
-  ylab("MEDIAN CONCORDANCE") + scale_fill_manual(values =c("#3C5488FF","#E64B35FF")) + ylim(0,1) +
+  ylab("Median Concordance") + scale_fill_manual(values =c("#3C5488FF","#E64B35FF")) + ylim(0,1) +
   stat_compare_means(aes(group = TIPO), label = "p.signif", label.x = 1.5, label.y = 0.95) +
-  theme(plot.title = element_text(size = 13.5, face = "bold"),
+  theme(plot.title = element_text(size = 20, face = "bold"),
         legend.title=element_blank(),
-        legend.text=element_text(size=15),
-        axis.text=element_text(size=10),
-        axis.title=element_text(size=13.5,face="bold"),
+        legend.text=element_text(size=20),
+        axis.text=element_text(size=20),
+        axis.title=element_text(size=20,face="bold"),
         axis.title.x=element_blank())
 p
 
@@ -130,17 +132,17 @@ vafs$TIPO <- factor( as.character(vafs$TIPO), levels=c("WBCs", "TISSUE", "PLASMA
 
 
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG11A.svg", width = 11, height = 10)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG11A.svg", width = 13, height = 10)
 p <- ggplot(vafs, aes(x=TIPO, y=COV, color=INS, fill=INS)) + 
   geom_boxplot() + theme_bw() + scale_colour_manual(values =c("grey48","grey50")) +
   scale_fill_manual(values =c("#3C5488FF","#E64B35FF")) +
-  ylab("MEDIAN COVERAGE") + 
+  ylab("Median Coverage") + 
   stat_compare_means(aes(group = INS), label = "p.signif") +
-  theme(plot.title = element_text(size = 13.5, face = "bold"),
+  theme(plot.title = element_text(size = 20, face = "bold"),
         legend.title=element_blank(),
-        legend.text=element_text(size=15),
-        axis.text=element_text(size=10),
-        axis.title=element_text(size=13.5),
+        legend.text=element_text(size=20),
+        axis.text=element_text(size=20),
+        axis.title=element_text(size=20),
         axis.title.x=element_blank())
 p
 
@@ -157,17 +159,18 @@ vafs$TIPO <- factor( as.character(vafs$TIPO), levels=c("TISSUE", "PLASMA-BL", "P
 
 vafs$T_FRACTION = vafs$T_FRACTION*100
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG11B.svg", width = 11, height = 10)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG11B.svg", width = 13, height = 10)
 p <- ggplot(vafs, aes(x=TIPO, y=T_FRACTION, color=INS, fill=INS)) + 
   geom_boxplot() + theme_bw() + scale_colour_manual(values =c("grey48","grey50")) + ylim(0, 100) +
   scale_fill_manual(values =c("#3C5488FF","#E64B35FF")) +
   ylab("Tumor Fraction") + 
   stat_compare_means(aes(group = INS), label = "p.signif") +
-  theme(plot.title = element_text(size = 13.5, face = "bold"),
+  theme(plot.title = element_text(size = 20, face = "bold"),
         legend.title=element_blank(),
-        legend.text=element_text(size=15),
-        axis.text=element_text(size=10),
-        axis.title.x=element_blank())
+        legend.text=element_text(size=20),
+        axis.text=element_text(size=20),
+        axis.title.x=element_blank(),
+        axis.title.y=element_text(size=20))
 p
 
 dev.off()
@@ -185,17 +188,18 @@ vafs$TIPO <- factor( as.character(vafs$TIPO), levels=c("Tissue-Baseline", "Plasm
 
 
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG11C.svg", width = 11, height = 10)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG11C.svg", width = 14, height = 10)
 p <- ggplot(vafs, aes(x=TIPO, y=TMB, color=INS, fill=INS)) + 
   geom_boxplot() + theme_bw() + scale_colour_manual(values =c("grey48","grey50")) +
   scale_fill_manual(values =c("#3C5488FF","#E64B35FF")) +
   ylab("TMB") + 
   stat_compare_means(aes(group = INS), label = "p.signif") +
-  theme(plot.title = element_text(size = 13.5, face = "bold"),
+  theme(plot.title = element_text(size = 25, face = "bold"),
         legend.title=element_blank(),
-        legend.text=element_text(size=15),
-        axis.text=element_text(size=10),
-        axis.title.x=element_blank())
+        legend.text=element_text(size=20),
+        axis.text=element_text(size=20),
+        axis.title.x=element_blank(),
+        axis.title.y=element_text(size=20))
 p
 
 dev.off()

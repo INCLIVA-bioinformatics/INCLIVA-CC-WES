@@ -17,12 +17,14 @@ svg(file="/home/jmartin/Documents/articulo/scripts/figuras/FIG4A1.svg", width = 
 ggplot(data, aes(x=TMB, y=dN.dS, shape=SAMPLE_TYPE, color = SAMPLE_TYPE))  +
   geom_point() +
   theme(legend.position="top")  + geom_smooth(method = lm, fill = "grey80") + 
-  scale_color_manual(values=c('#3C5488FF','#E64B35FF')) + annotate("text", x = 40, y = 1.04, color = "#3C5488FF",
+  scale_color_manual(values=c('#3C5488FF','#E64B35FF')) + annotate("text", x = 40, y = 1.04, color = "#3C5488FF", size = 5,
                                                                      label = "paste(\"rho = 0.07\", \" p-value = 0.834\")", parse = TRUE) +  theme_bw() + ylab("dN/dS") +
-  annotate("text", x = 40, y = 1.06, color = "#E64B35FF", label = "paste(\"rho = 0.454\", \" p-value = 0.0228\")", parse = TRUE) + 
-  theme(plot.title = element_text(size = 20, face = "bold"),
+  annotate("text", x = 40, y = 1.06, size = 5, color = "#E64B35FF", label = "paste(\"rho = 0.454\", \" p-value = 0.0228\")", parse = TRUE) + 
+  theme(plot.title = element_text(size = 25, face = "bold"),
         axis.text=element_text(size=15),
-        axis.title=element_text(size=20,face="bold"), legend.position = "top")
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=20),
+        axis.title=element_text(size=25,face="bold"), legend.position = "top")
 dev.off()
 
 
@@ -62,12 +64,14 @@ svg(file="/home/jmartin/Documents/articulo/scripts/figuras/FIG4A2.svg", width = 
 ggplot(data2, aes(x=TMB, y=dN.dS, shape=SAMPLE_TYPE, color = SAMPLE_TYPE))  +
   geom_point() +
   theme(legend.position="top")  + geom_smooth(method = lm, fill = "grey80") + 
-  scale_color_manual(values=c('#3C5488FF','#E64B35FF')) + annotate("text", x = 11, y = 1.06, color = "orangered3",
+  scale_color_manual(values=c('#3C5488FF','#E64B35FF')) + annotate("text", x = 11, y = 1.06, color = "orangered3", size = 5,
                                                                      label = "paste(\"rho = 0.5541\", \" p-value = 0.0321\")", parse = TRUE) +  theme_bw() + ylab("dN/dS") +
-  annotate("text", x = 11, y = 1.05, color = "#3C5488FF", label = "paste(\"rho = 0.3107\", \" p-value = 0.2592\")", parse = TRUE) + 
-  theme(plot.title = element_text(size = 20, face = "bold"),
+  annotate("text", x = 11, y = 1.05, size = 5, color = "#3C5488FF", label = "paste(\"rho = 0.3107\", \" p-value = 0.2592\")", parse = TRUE) + 
+  theme(plot.title = element_text(size = 25, face = "bold"),
         axis.text=element_text(size=15),
-        axis.title=element_text(size=20,face="bold"), legend.position = "top")
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=20),
+        axis.title=element_text(size=25,face="bold"), legend.position = "top")
 dev.off()
 
 ######### SUPP FIGURE 8 #########
