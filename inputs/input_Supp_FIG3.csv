@@ -1,0 +1,24 @@
+PATIENT	GENES	CONCORDANCE	TIPO
+207	set([])	0	Discovery Cohort
+158	set([])	0	Discovery Cohort
+161	set([])	0	Discovery Cohort
+261	set([])	0	Discovery Cohort
+243	set(['PRB4_p.Pro123Arg'])	0.0625	Discovery Cohort
+185	set([])	0	Discovery Cohort
+138	set(['FCGBP_p.Asn1537Thr'])	0.0625	Discovery Cohort
+107	set([])	0	Discovery Cohort
+85	set(['GOLGA6L7_p.Glu243Lys', 'MUC2_p.Thr2384Ile'])	0.125	Discovery Cohort
+M5	set([])	0	Validation Cohort
+M6	set([])	0	Validation Cohort
+M7	set(['FAM8A1_p.Glu240Ter'])	0.0625	Validation Cohort
+M11	set(['ZFPM1_p.Glu444Ala'])	0.0625	Validation Cohort
+M10	set([])	0	Validation Cohort
+M13	set(['TRAV19_p.Gln26Pro', '-_-'])	0.125	Validation Cohort
+M12	set(['LOC105378193_p.Arg320His'])	0.0625	Validation Cohort
+M1	set(['SREBF1_p.Gly42Asp'])	0.0625	Validation Cohort
+M14	set(['MUC4_p.Ser2613Gly', 'LOC105378193_p.Ser126Arg'])	0.125	Validation Cohort
+M3	set(['ZFPM1_p.Glu444Ala'])	0.0625	Validation Cohort
+M2	set(['ZFPM1_p.Glu444Ala'])	0.0625	Validation Cohort
+M15	set(['NPIPB4_p.His667Pro', '-_-', 'LOC101930307_p.Cys478Arg', 'NPIPB4_p.Pro669Arg', 'LOC105378193_p.Arg118Leu', 'ZFPM1_p.Glu444Ala'])	0.375	Validation Cohort
+M9	set(['NBPF9_p.Leu315Val', 'OR2T35_p.Ile320Ter', 'MUC3A_p.Thr2244Ser', 'MUC3A_p.Gly2238Ser', 'OR2T35_p.Gly323Asp', 'OR2T35_p.Ala317Thr'])	0.375	Validation Cohort
+M8	set(['ARSF_-'])	0.0625	Validation Cohort
