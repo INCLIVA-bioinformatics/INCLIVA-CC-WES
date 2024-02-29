@@ -122,9 +122,9 @@ dev.off()
 
 
 
-###### Supp FIG 11A ##########
+###### Supp FIG 10A ##########
 
-vafs <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG11A.txt", header =T, dec='.', sep='\t')
+vafs <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG10A.txt", header =T, dec='.', sep='\t')
 
 
 
@@ -132,7 +132,7 @@ vafs$TIPO <- factor( as.character(vafs$TIPO), levels=c("WBCs", "TISSUE", "PLASMA
 
 
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG11A.svg", width = 13, height = 10)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG10A.svg", width = 13, height = 10)
 p <- ggplot(vafs, aes(x=TIPO, y=COV, color=INS, fill=INS)) + 
   geom_boxplot() + theme_bw() + scale_colour_manual(values =c("grey48","grey50")) +
   scale_fill_manual(values =c("#3C5488FF","#E64B35FF")) +
@@ -150,16 +150,16 @@ dev.off()
 
 
 
-###### Supp FIG 11B ##########
+###### Supp FIG 10B ##########
 
-vafs <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG11B.txt", header =T, dec='.', sep='\t')
+vafs <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG10B.txt", header =T, dec='.', sep='\t')
 
 
 vafs$TIPO <- factor( as.character(vafs$TIPO), levels=c("TISSUE", "PLASMA-BL", "PLASMA-PO", "PLASMA-RE") )
 
 vafs$T_FRACTION = vafs$T_FRACTION*100
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG11B.svg", width = 13, height = 10)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG10B.svg", width = 13, height = 10)
 p <- ggplot(vafs, aes(x=TIPO, y=T_FRACTION, color=INS, fill=INS)) + 
   geom_boxplot() + theme_bw() + scale_colour_manual(values =c("grey48","grey50")) + ylim(0, 100) +
   scale_fill_manual(values =c("#3C5488FF","#E64B35FF")) +
@@ -180,7 +180,7 @@ dev.off()
 
 ###### Supp FIG 11C ##########
 
-vafs <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG11C.txt", header =T, dec='.', sep=';')
+vafs <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG10C.txt", header =T, dec='.', sep=';')
 
 
 
@@ -188,7 +188,7 @@ vafs$TIPO <- factor( as.character(vafs$TIPO), levels=c("Tissue-Baseline", "Plasm
 
 
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG11C.svg", width = 14, height = 10)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG10C.svg", width = 14, height = 10)
 p <- ggplot(vafs, aes(x=TIPO, y=TMB, color=INS, fill=INS)) + 
   geom_boxplot() + theme_bw() + scale_colour_manual(values =c("grey48","grey50")) +
   scale_fill_manual(values =c("#3C5488FF","#E64B35FF")) +

@@ -168,18 +168,20 @@ dev.off()
 
 
 
-######## SUPP FIGURE 9 ######
+######## SUPP FIGURE 8D ######
 
-data = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG9.csv", header = TRUE, sep = "\t", encoding = "ASCII")
+data = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG8D.csv", header = TRUE, sep = "\t", encoding = "ASCII")
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG9.svg", width = 15, height = 10)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG8D.svg", width = 15, height = 10)
 ggplot(data, aes(x=TMB, y=dN.dS, shape=SAMPLE_TYPE, color = SAMPLE_TYPE))  +
   geom_point() +
   theme(legend.position="top")  + geom_smooth(method = lm, fill = "grey80") + 
-  scale_color_manual(values=c('#3C5488FF','#E64B35FF')) + annotate("text", x = 50, y = 1.25, color = "#3C5488FF",
+  scale_color_manual(values=c('#3C5488FF','#E64B35FF')) + annotate("text", x = 50, y = 1.25, color = "#3C5488FF", size = 5,
                                                                      label = "paste(\"rho = 0.393\", \" p-value = 0.0785\")", parse = TRUE) +
-  annotate("text", x = 50, y = 1.22, color = "#E64B35FF", label = "paste(\"rho = 0.4818\", \" p-value = 0.0199\")", parse = TRUE) + theme_bw() + ylab("dN/dS") +
-  theme(plot.title = element_text(size = 20, face = "bold"),
+  annotate("text", x = 50, y = 1.22, color = "#E64B35FF", size = 5, label = "paste(\"rho = 0.4818\", \" p-value = 0.0199\")", parse = TRUE) + theme_bw() + ylab("dN/dS") +
+  theme(plot.title = element_text(size = 25, face = "bold"),
         axis.text=element_text(size=15),
-        axis.title=element_text(size=20,face="bold"), legend.position = "top")
+        legend.text=element_text(size=20),
+        legend.title=element_text(size=20),
+        axis.title=element_text(size=25,face="bold"), legend.position = "top")
 dev.off()
