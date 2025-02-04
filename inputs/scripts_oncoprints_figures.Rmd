@@ -1,0 +1,1143 @@
+Eso---
+title: "Proyecto cáncer páncreas - exomas"
+author: "Jorge Martín-Arana"
+date: "15/12/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r}
+library(ComplexHeatmap)
+library(reshape2)
+library(ggplot2)
+library(data.table)
+library(stringr)
+```
+
+
+#Functions
+
+```{r}
+generate_onco_df <- function(x){
+  somatic_tmp <- x[,c(1,which(grepl("_FREQUENCY", colnames(x))))]
+  #somatic_tmp[somatic_tmp == "-"] <- ""
+  #colnames(somatic_tmp) <- sub("","",colnames(somatic_tmp))
+  oncoprint_df <- as.data.frame(sort(unique(somatic_tmp$GENE_SYMBOL)))
+  
+  colnames(oncoprint_df) <- "Gene"
+  for (sample in 2:ncol(somatic_tmp)){
+    values_per_sample <- vector()
+    for (gene in oncoprint_df$Gene){
+      variants <- somatic_tmp[,c(1,sample)]
+      #variants <- subset(variants, variants[,-1] != "" & variants$GENE_SYMBOL %in% gene)
+      variants <- subset(variants, !is.na(variants[,-1]) & variants$GENE_SYMBOL %in% gene)
+      if(nrow(variants) == 0){
+        values_per_sample <- c(values_per_sample,"")
+      } else if (nrow(variants) == 1){
+        values_per_sample <- c(values_per_sample,"single")
+      } else if (nrow(variants) == 2){
+        values_per_sample <- c(values_per_sample,"double")
+      } else if (nrow(variants) == 3){
+        values_per_sample <- c(values_per_sample,"triple")
+      } else {
+        values_per_sample <- c(values_per_sample,"multiple")
+      }
+    }
+    sample_name <- colnames(somatic_tmp)[sample]
+    oncoprint_df[[sample_name]] <- values_per_sample  
+  }
+  rownames(oncoprint_df) <- oncoprint_df$Gene
+  oncoprint_df <- oncoprint_df[,-1]
+  return(oncoprint_df)
+}
+
+oncoprint_incliva <- function (oncoprint_df, top_rows=0){
+  
+  alter_fun = list(
+    AMP = function(x, y, w, h) grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = col["AMP"], col = NA)),
+    DEL = function(x, y, w, h) grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = col["DEL"], col = NA)),
+    background = function(x, y, w, h) grid.rect(x, y, w*0.4, h*0.35, gp = gpar(fill = "#CCCCCC", col = NA)),
+    single = function(x, y, w, h) grid.rect(x, y, w*0.4, h*0.35, gp = gpar(fill = col["single"], col = NA)),
+    double = function(x, y, w, h) grid.rect(x, y, w*0.4, h*0.35, gp = gpar(fill = col["double"], col = NA)),
+    triple = function(x, y, w, h) grid.rect(x, y, w*0.4, h*0.35, gp = gpar(fill = col["triple"], col = NA)),
+    multiple = function(x, y, w, h) grid.rect(x, y, w*0.4, h*0.35, gp = gpar(fill = col["multiple"], col = NA)),
+    FFPE = function(x, y, w, h) grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = col["FFPE"], col = NA)),
+    PLASMA = function(x, y, w, h) grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = col["PLASMA"], col = NA)),
+    FFPE_and_PLASMA = function(x, y, w, h) grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = col["FFPE_and_PLASMA"], col = NA))
+  )
+  
+  col = c(single = "deepskyblue4", double = "indianred", triple = "gold2", multiple ="lightskyblue3", AMP ="darkmagenta", DEL="aquamarine4", FFPE = "deepskyblue4", PLASMA ="indianred", FFPE_and_PLASMA ="skyblue3")
+  
+  if (top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)[1:top_rows]
+    oncoprint_df = oncoprint_df[top_index, ]
+  }
+  
+  #View(oncoprint_df)
+  
+  oncoPrint(oncoprint_df, heatmap_legend_param = list(title = "", title_gp=gpar(fontsize = 16), labels_gp = gpar(col = "black", fontsize = 14), grid_height = unit(1, "cm"), grid_width = unit(1, "cm")), column_order = colnames(oncoprint_df), alter_fun = alter_fun, col = col, alter_fun_is_vectorized = T,  right_annotation = NULL, show_heatmap_legend =T, row_names_side="right", show_row_names = T, show_column_names = T, pct_gp = gpar(fontsize = 10), show_pct = T,  column_names_gp = gpar(fontsize = 8), row_order = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE))
+}
+
+
+order_df <- function(n){
+  a <- c()
+  for (i in 1:n){
+    a <- c(a, i, i +n)
+  }
+  return(a)
+}
+
+
+
+to_plot_patient <- function(plasma_ffpe_df){
+  df_per_patient <- data.frame(matrix(nrow=nrow(plasma_ffpe_df), ncol = ncol(plasma_ffpe_df)/2 ))
+  rownames(df_per_patient) <- rownames(plasma_ffpe_df)
+  colnames(df_per_patient) <- sub("cfDNA-","",colnames(plasma_ffpe_df)[seq(1,length(colnames(plasma_ffpe_df)),2)])
+  colnames(df_per_patient) <- str_remove(colnames(df_per_patient), "^0+")
+  
+  for(one_row in 1:nrow(plasma_ffpe_df)){
+    results_per_row <- vector()
+    for(one_pair in seq(1, ncol(plasma_ffpe_df),2)){
+      if(plasma_ffpe_df[one_row,one_pair] != "" & plasma_ffpe_df[one_row,one_pair+1] != ""){
+        results_per_row <- c(results_per_row, "FFPE_and_PLASMA")
+      }
+      else if(plasma_ffpe_df[one_row,one_pair] != "" & plasma_ffpe_df[one_row,one_pair+1] == ""){
+        results_per_row <- c(results_per_row, "PLASMA")
+      }
+      else if(plasma_ffpe_df[one_row,one_pair] == "" & plasma_ffpe_df[one_row,one_pair+1] != ""){
+        results_per_row <- c(results_per_row, "FFPE")
+      }
+      else{
+        results_per_row <- c(results_per_row, "")
+      }
+    }
+    df_per_patient[one_row,] <- results_per_row
+  }
+  return(df_per_patient)
+}
+
+## Sample name cut
+
+sample_name_cut <- function(x){
+  temp_df <- x
+  colnames(temp_df) <- sub("_FREQUENCY", "", colnames(temp_df))
+  colnames(temp_df) <- sub("TT-PDAC", "TT", colnames(temp_df))
+  colnames(temp_df) <- sub(".*-PDAC-", "cfDNA-", colnames(temp_df))
+  colnames(temp_df) <- sub("cfDNA-0", "", colnames(temp_df))
+  colnames(temp_df) <- sub("TT-0", "", colnames(temp_df))
+  colnames(temp_df) <- sub(".plasma", "", colnames(temp_df))
+  colnames(temp_df) <- sub(".ffpe", "", colnames(temp_df))
+  return(temp_df)
+}
+
+get_cnv_df_to_write <- function(gene_list, cnv_all_files){
+  cnv_df <- data.frame(matrix(nrow = 0, ncol=5))
+  for (cnv_path in cnv_all_files) {
+    #print(cnv_path)
+    cnv <- read.csv(cnv_path, sep = '\t', header = F)
+    cnv <- subset(cnv, cnv$V3 %in% gene_list)
+    cnv_df <- rbind(cnv_df, cnv)
+  }
+  return(cnv_df)
+}
+
+filter_bad_combinations <- function(x, error_file, bad_values=c("DEL;CNV_FFPE;AMP;CNV_PLASMA", "AMP;CNV_FFPE;DEL;CNV_PLASMA" )){
+  bad_data <- data.frame(matrix(data=NA, nrow=0, ncol=2))
+  colnames(bad_data) <- c("Sample","FFPE", "PLASMA")
+  print("looking for incongruent combination of cnv")
+  for (gene in rownames(x)){
+    for (sample in colnames(x)){
+      if(grepl("DEL;CNV_FFPE;AMP;CNV_PLASMA", x[gene, sample])){
+        cat("Incongruent combination of cnv detected: DEL on FFPE and AMP on PLASMA on gene", gene, "in sample ", sample,"\n")
+        sub("DEL;CNV_FFPE;AMP;CNV_PLASMA", "", x[gene, sample])
+        bad_data[sample, ] = c("DEL", "AMP")
+      }
+      else if (grepl("AMP;CNV_FFPE;DEL;CNV_PLASMA", x[gene, sample])){
+        cat("Incongruent combination of cnv detected: AMP on FFPE and DEL on PLASMA on gene", gene, "in sample ", sample,"\n")
+        sub("AMP;CNV_FFPE;DEL;CNV_PLASMA", "", x[gene, sample])
+        bad_data[sample, ] = c("AMP", "DEL")
+      }
+    }
+  }
+  if(nrow(bad_data) > 0){
+    cat("Saving discarded CNV on: ", error_file, "\n")
+    write.table(bad_data,error_file,  quote = F, row.names = T, sep="\t")
+  }
+  return(x)
+}
+
+print_paired_samples <- function (paired_samples_df, FFPE_common_cnv, plasma_common_cnv, top_rows = 0, only_snv_for_frequency = T){
+  
+  plot_patient_df <- to_plot_patient(paired_samples_df)
+  plot_patient_df[plot_patient_df == "PLASMA" ] <- "SNV_InDel_PLASMA"
+  plot_patient_df[plot_patient_df == "FFPE" ] <- "SNV_InDel_FFPE"
+  plot_patient_df[plot_patient_df == "FFPE_and_PLASMA" ] <- "SNV_InDel_FFPE;SNV_InDel_PLASMA"
+  plot_patient_df <- read_cnv(plot_patient_df, colnames(plot_patient_df), FFPE_common_cnv, F, "_FFPE")
+  plot_patient_df <- read_cnv(plot_patient_df, colnames(plot_patient_df), plasma_common_cnv, F, "_PLASMA")
+  
+  col_split <- c(rep("SNV FFPE  CNV FFPE | SNV PLASMA  CNV PLASMA",length(colnames(plot_patient_df)))) 
+  
+  return(oncoprint_columns(plot_patient_df, col_split = col_split, top_rows = top_rows, only_snv_for_frequency = only_snv_for_frequency))
+}
+
+print_samples <- function (samples_df, samples_cnv, sample_name,  top_rows = 0, only_snv_for_frequency = T){
+  
+  samples_df <- read_cnv(samples_df, colnames(samples_df), samples_cnv, F)
+  col_split <- c(rep("",length(colnames(samples_df)))) 
+  return(oncoprint_columns(samples_df, col_split = col_split, top_rows = top_rows, only_snv_for_frequency = only_snv_for_frequency))
+}
+
+# Esta funcion cambia los valores de la matriz para cuando es una muestra no pareada. Si hay muestras pareadas, usar to_plot_patient()
+to_plot_patient_sample <- function(onco_df, name){
+  
+  onco_df[onco_df == "single"|
+            onco_df == "double" |
+            onco_df == "triple" |
+            onco_df == "multiple"] <- "SNV_InDel"
+  
+  return(onco_df)
+}
+
+read_cnv <- function(dataframe, samples, cnv_files, put_cnv_without_point_mutations = F, suffix = "", only_cnv_with_known_snv = F){
+  cnv_samples <- 1
+  for (cnv_path in cnv_files) {
+    cnv <- read.csv(cnv_path, sep = '\t', header = F)[3:5]
+    if(only_cnv_with_known_snv){
+      cnv <- subset(cnv, cnv$V3 %in% rownames(dataframe))
+    }
+    print(cnv_samples)
+    if (nrow(cnv) != 0){
+      genes <- cnv[1][,1]
+      cnv_types <- cnv[2][, 1]
+      lohs <- cnv[3][, 1]
+      for (i in 1:length(genes)){
+        gen = as.character(genes)[i]
+        if (gen == "-" | gen == "." | gen == "gene"){next}
+        cnv_type = as.character(cnv_types)[i]
+        value <- dataframe[gen, cnv_samples]
+        if(grepl(",", gen,fixed = T )){
+          next
+        }
+        else if (is.na(value) | value == ""){
+          dataframe[gen, cnv_samples] <- paste0(cnv_type, suffix)
+        }
+        else {
+          dataframe[gen, cnv_samples] <- paste0(value,";", cnv_type, suffix)
+        }
+      }
+    }
+    cnv_samples <- cnv_samples + 1
+  }
+  dataframe[is.na(dataframe)] <- ""
+  return(dataframe)
+}
+
+
+join_all_samples <- function (FFPE_exclusive_samples, plasma_exclusive_samples, common_samples, 
+                              FFPE_cnv, plasma_cnv, FFPE_common_cnv, plasma_common_cnv, col_split, 
+                              top_rows = 0, only_snv_for_frequency = T, annotation_df = NULL, color_annotation = c()){
+  
+  all_genes <- unique(c(rownames(FFPE_exclusive_samples),rownames(plasma_exclusive_samples), rownames(common_samples)))
+  
+  plot_patient_df <- to_plot_patient(common_samples)
+  plot_patient_df[plot_patient_df == "PLASMA" ] <- "SNV_InDel;PLASMA"
+  plot_patient_df[plot_patient_df == "FFPE" ] <- "SNV_InDel;FFPE"
+  plot_patient_df[plot_patient_df == "FFPE_and_PLASMA" ] <- "SNV_InDel;FFPE_and_PLASMA"
+  top_rows <- ifelse(top_rows == 0, nrow(plot_patient_df), top_rows)
+  plot_patient_df <- read_cnv(plot_patient_df, colnames(plot_patient_df), FFPE_common_cnv, T, ";CNV_FFPE")
+  plot_patient_df <- read_cnv(plot_patient_df, colnames(plot_patient_df), plasma_common_cnv, T, ";CNV_PLASMA")
+  
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE;DEL;CNV_FFPE;DEL;CNV_PLASMA"] = "SNV_InDel;FFPE;DEL;CNV_FFPE_PLASMA"
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE;AMP;CNV_FFPE;AMP;CNV_PLASMA"] = "SNV_InDel;FFPE;AMP;CNV_FFPE_PLASMA"
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE;AMP;CNV_FFPE;AMP;CNV_PLASMA"] = "SNV_InDel;FFPE;AMP;CNV_FFPE_PLASMA"
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE;DEL;CNV_FFPE;AMP;CNV_PLASMA"] = "SNV_InDel;FFPE"
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE;AMP;CNV_FFPE;DEL;CNV_PLASMA"] = "SNV_InDel;FFPE"
+  plot_patient_df[plot_patient_df == "SNV_InDel;PLASMA;AMP;CNV_FFPE;AMP;CNV_PLASMA"] = "SNV_InDel;PLASMA;AMP;CNV_FFPE_PLASMA"
+  plot_patient_df[plot_patient_df == "SNV_InDel;PLASMA;DEL;CNV_FFPE;DEL;CNV_PLASMA"] = "SNV_InDel;PLASMA;DEL;CNV_FFPE_PLASMA"
+  plot_patient_df[plot_patient_df == "SNV_InDel;PLASMA;DEL;CNV_FFPE;AMP;CNV_PLASMA"] = "SNV_InDel;PLASMA"
+  plot_patient_df[plot_patient_df == "SNV_InDel;PLASMA;AMP;CNV_FFPE;DEL;CNV_PLASMA"] = "SNV_InDel;PLASMA"
+  plot_patient_df[plot_patient_df == "DEL;CNV_FFPE;AMP;CNV_PLASMA"] = ""
+  plot_patient_df[plot_patient_df == "AMP;CNV_FFPE;DEL;CNV_PLASMA"] = ""
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE;DEL;CNV_FFPE;AMP;CNV_PLASMA"] = ""
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE;AMP;CNV_FFPE;DEL;CNV_PLASMA"] = ""
+  plot_patient_df[plot_patient_df == "SNV_InDel;PLASMA;DEL;CNV_FFPE;AMP;CNV_PLASMA"] = ""
+  plot_patient_df[plot_patient_df == "SNV_InDel;PLASMA;AMP;CNV_FFPE;DEL;CNV_PLASMA"] = ""
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE_and_PLASMA;FFPE;DEL;CNV_FFPE;AMP;CNV_PLASMA"] = ""
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE_and_PLASMA;AMP;CNV_FFPE;AMP;CNV_FFPE;AMP;CNV_PLASMA"] = ""
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE_and_PLASMA;AMP;CNV_FFPE;DEL;CNV_PLASMA"] = ""
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE_and_PLASMA;DEL;CNV_FFPE;AMP;CNV_PLASMA"] = "SNV_InDel;FFPE_and_PLASMA"
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE_and_PLASMA;DEL;CNV_FFPE;DEL;CNV_PLASMA"] = "SNV_InDel;FFPE_and_PLASMA;DEL;CNV_FFPE_PLASMA"
+  plot_patient_df[plot_patient_df == "SNV_InDel;FFPE_and_PLASMA;AMP;CNV_FFPE;AMP;CNV_PLASMA"] = "SNV_InDel;FFPE_and_PLASMA;AMP;CNV_FFPE_PLASMA"
+
+  plot_patient_df[plot_patient_df == "DEL;CNV_FFPE;DEL;CNV_PLASMA"] = "DEL;CNV_FFPE_PLASMA"
+  plot_patient_df[plot_patient_df == "AMP;CNV_FFPE;AMP;CNV_PLASMA"] = "AMP;CNV_FFPE_PLASMA"
+  
+  plasma_exclusive_samples[plasma_exclusive_samples == "single" |
+                             plasma_exclusive_samples == "double" |
+                             plasma_exclusive_samples == "triple" |
+                             plasma_exclusive_samples == "multiple"] = "SNV_InDel"
+  
+  plasma_exclusive_samples <- read_cnv(plasma_exclusive_samples, colnames(plasma_exclusive_samples) ,plasma_cnv, T)
+  
+  FFPE_exclusive_samples[FFPE_exclusive_samples == "single" |
+                           FFPE_exclusive_samples == "double" |
+                           FFPE_exclusive_samples == "triple" |
+                           FFPE_exclusive_samples == "multiple"] = "SNV_InDel"
+  
+  FFPE_exclusive_cnv_filter_3_df <- read_cnv(FFPE_exclusive_samples, colnames(FFPE_exclusive_samples) ,FFPE_cnv, T)
+  FFPE_exclusive_cnv_filter_3_df[FFPE_exclusive_cnv_filter_3_df == "single;DEL;CNV_FFPE"] = "SNV_InDel;DEL;CNV_FFPE"
+  
+  plasma_exclusive_and_final_r_3 <- merge(plasma_exclusive_samples, plot_patient_df, by="row.names", all = T )
+  rownames(plasma_exclusive_and_final_r_3) <- plasma_exclusive_and_final_r_3[, 1]
+  plasma_exclusive_and_final_r_3 <- plasma_exclusive_and_final_r_3[, 2:ncol(plasma_exclusive_and_final_r_3)]
+  
+  plasma_exclusive_FFPE_exclusive_and_final_r_3 <- merge(FFPE_exclusive_cnv_filter_3_df, plasma_exclusive_and_final_r_3, by="row.names", all = T )
+  rownames(plasma_exclusive_FFPE_exclusive_and_final_r_3) <- plasma_exclusive_FFPE_exclusive_and_final_r_3[, 1]
+  plasma_exclusive_FFPE_exclusive_and_final_r_3 <- plasma_exclusive_FFPE_exclusive_and_final_r_3[, 2:ncol(plasma_exclusive_FFPE_exclusive_and_final_r_3)]
+  
+  plasma_exclusive_FFPE_exclusive_and_final_r_3 <- sample_name_cut(plasma_exclusive_FFPE_exclusive_and_final_r_3)
+  plasma_exclusive_FFPE_exclusive_and_final_r_3[is.na(plasma_exclusive_FFPE_exclusive_and_final_r_3)] <- ""
+
+  return(list(ht = oncoprint_columns(plasma_exclusive_FFPE_exclusive_and_final_r_3, 
+                                     col_split = col_split, top_rows = top_rows, 
+                                     only_snv_for_frequency = only_snv_for_frequency,
+                                     top_annotation_df = annotation_df,
+                                     col_2 = color_annotation), 
+              df = plasma_exclusive_FFPE_exclusive_and_final_r_3))
+}
+
+
+oncoprint_with_filters <- function(FFPE_paired, plasma_paired, FFPE, plasma, 
+                                   cnv_paired_ffpe = c(), cnv_paired_plasma = c(), 
+                                   cnv_ffpe = c(), cnv_plasma = c(), filters = c(), 
+                                   split_columns = c(), top_rows = 0, annotation_df = NULL,
+                                   col_annotation = c()){
+  plasma_filtered <- filter_or(plasma, filters)
+  FFPE_filtered <- filter_or(FFPE, filters)
+  FFPE_paired_filtered <- filter_or(FFPE_paired, filters)
+  plasma_paired_filtered <- filter_or(plasma_paired, filters)
+  
+  common_columns <- colnames(plasma_paired_filtered)[1:33]
+  merged_paired <- merge(FFPE_paired_filtered, plasma_paired_filtered, by=common_columns, suffixes = c(".ffpe",".plasma"), all = T)
+  paired_oncoprint_df <- generate_onco_df(merged_paired)
+  paired_oncoprint_df <- paired_oncoprint_df[, order_df(ncol(paired_oncoprint_df)/2)]
+  
+  FFPE_oncoprint_df <- generate_onco_df(FFPE_filtered)
+  plasma_oncoprint_df <- generate_onco_df(plasma_filtered)
+  join_all_samples(FFPE_exclusive_samples =  FFPE_oncoprint_df, 
+                   plasma_exclusive_samples =  plasma_oncoprint_df, 
+                   common_samples = paired_oncoprint_df, 
+                   FFPE_cnv =  cnv_ffpe, 
+                   plasma_cnv = cnv_plasma, 
+                   FFPE_common_cnv = cnv_paired_ffpe, 
+                   plasma_common_cnv =  cnv_paired_plasma, 
+                   col_split = split_columns , 
+                   top_rows = top_rows,
+                   annotation_df = annotation_df,
+                   color_annotation = col_annotation)
+}
+
+order_df <- function(n){
+  a <- c()
+  for (i in 1:n){
+    a <- c(a, i, i +n)
+  }
+  return(a)
+}
+```
+
+
+# Oncoprint
+
+############### FIG3A ################
+
+Función cuando hay que coger columnas pareadas
+```{r}
+
+#oncoprint_df <-plasma_exclusive_FFPE_exclusive_and_final_r_3
+#col_split = split_column
+#top_rows = 30
+#only_snv_for_frequency = T
+#  oncoprint_df[is.na(oncoprint_df)] <- ""
+oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for_frequency = F, 
+                               top_annotation_df = NULL, col_2 = c()){
+  
+  top_rows <- ifelse(top_rows == 0, nrow(oncoprint_df), top_rows)
+  
+  col <- c(SNV_InDel_FFPE = "darkolivegreen4", SNV_InDel_PLASMA = "darkolivegreen4", DEL_FFPE ="#3C5488FF",
+           DEL_PLASMA = "#3C5488FF", AMP_FFPE ="#E64B35FF", AMP_PLASMA ="#E64B35FF", AMP_DEL = "black", DEL_AMP = "black")
+  
+  alter_fun = list(
+    background = function(x, y, w, h) {
+      grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = "#CCCCCC", col = NA))
+      grid.segments(x, y-h*0.35, x, y + h*0.35, gp = gpar(lwd = 2))}, 
+    SNV_InDel_PLASMA = function(x, y, w, h) grid.rect(x-0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_PLASMA"], col = NA)),
+    SNV_InDel_FFPE = function(x, y, w, h) grid.rect(x+0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_FFPE"], col = NA)),
+    AMP_FFPE = function(x, y, w, h) grid.rect(x-w*0.11, y, w*0.19, h*0.7, gp = gpar(fill = col["AMP_FFPE"], col = NA)),
+    AMP_PLASMA = function(x, y, w, h) grid.rect(x+w*0.3, y, w*0.2, h*0.7, gp = gpar(fill = col["AMP_PLASMA"], col = NA)),
+    DEL_FFPE = function(x, y, w, h) grid.rect(x-0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_FFPE"], col = NA)),
+    DEL_PLASMA = function(x, y, w, h) grid.rect(x+0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_PLASMA"], col = NA))
+  )
+  #grid.segments(x - w*0.4, y - h*0.4, x + w*0.4, y + h*0.4, gp = gpar(lwd = 2))
+  
+  if (only_snv_for_frequency & top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)[1:top_rows]
+    oncoprint_df <- oncoprint_df[top_index, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  else if (top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+    oncoprint_df <- oncoprint_df[top_index, ][1:top_rows, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot())
+  print(is.null(top_annotation_df))
+  if(!is.null(top_annotation_df)){
+    
+    ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot(), 
+                            df = top_annotation_df, col = col_2)
+  }
+  
+  #top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)
+  
+  ccdata = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/data_clinica_n12.csv", header = TRUE,    sep = "{", encoding = "ASCII", stringsAsFactors = FALSE)
+  ccdata$ID = as.character(ccdata$ID)
+  ccdata$ID = factor (ccdata$ID, levels = c("107","138","158","161","185","204","207","242","243","261","8","85"))
+  
+  gender = ccdata[, "Gender"]
+  yearstobirth = as.numeric(ccdata[, "AGE"])
+  pathologicstage = ccdata[, "StStage"]
+  MSI = ccdata[,"MSI"]
+  tto = ccdata[,"TTO.Y.N."]
+ 
+  print(colnames(oncoprint_df))
+  print (tto)
+  print (MSI)
+  
+  colnames(oncoprint_df) = c("107","138","158","161","185","204","207","242","243","261","8","85")
+  colnames(oncoprint_df) = as.character(colnames(oncoprint_df))
+  print(colnames(oncoprint_df))
+  
+
+  ht <- ht <- oncoPrint(oncoprint_df,  heatmap_legend_param = c(list(labels_gp = gpar(fontsize = 16),
+                                                                     title_gp = gpar(fontsize = 20))),
+                        column_order =  c("161","204","207", "8","107","138","158","185","242","243","85","261"),
+                        alter_fun = alter_fun, col = col, alter_fun_is_vectorized = FALSE,  show_heatmap_legend =F,
+                        top_annotation = HeatmapAnnotation(cbar = anno_oncoprint_barplot(), annotation_name_side = "right",
+                                                           MSI = MSI, Treatment = tto,Stage = pathologicstage,
+                                                           col = list(Treatment = c("yes" = "mediumpurple1", "no" = "whitesmoke"), 
+                                                                      MSI = c("yes" = "lightsalmon3", "no" = "snow2"),
+                                                                      Stage = c("IIA" = "#B09C85FF", "IIB" = "#7E6148FF", "III" = "#4DBBD5FF",
+                                                                                "IIIB" = "#00A087FF", "IIIC" = "#3C5488FF")),
+                                                           annotation_legend_param = list(labels_gp = gpar(fontsize = 16), legend_direction = "horizontal",
+                                                                                            title_gp = gpar(fontsize = 20))),
+                        remove_empty_columns = FALSE, remove_empty_rows = TRUE, show_row_names = T, show_column_names = T,
+                        pct_gp = gpar(fontsize = 20), show_pct = F,  row_names_side = "left",
+                        column_names_gp = gpar(fontsize = 20),
+                        column_gap = unit(c(5), "mm"),  row_order = top_index)
+  
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom",heatmap_legend_list = list(
+    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
+  )))
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Fig3A.svg", width = 15, height = 20)
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom", heatmap_legend_list = list(
+   Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
+  dev.off()
+  return(oncoprint_df)
+}
+```
+
+```{r}
+cnv_files <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET85_results_genes_def.txt")
+
+
+```
+
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx85_results_genes_def.txt")
+```
+
+
+```{r}
+library(reshape2)
+
+#cns2 = read.csv("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG3A.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
+cm[is.na(cm)] = ""
+cm = cm[-1,]
+
+
+
+onco_df = as.data.frame(cm)
+onco_df <- onco_df[, order_df(ncol(onco_df)/2)]
+print_paired_samples(onco_df, cnv_files , cnv_files_p, top_rows = nrow(onco_df))
+
+```
+
+
+
+
+
+############# FIG4A ################
+
+Función cuando hay que coger columnas pareadas
+```{r}
+
+#oncoprint_df <-plasma_exclusive_FFPE_exclusive_and_final_r_3
+#col_split = split_column
+#top_rows = 30
+#only_snv_for_frequency = T
+#  oncoprint_df[is.na(oncoprint_df)] <- ""
+oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for_frequency = F, 
+                               top_annotation_df = NULL, col_2 = c()){
+  
+  top_rows <- ifelse(top_rows == 0, nrow(oncoprint_df), top_rows)
+  
+  col <- c(SNV_InDel_FFPE = "darkolivegreen4", SNV_InDel_PLASMA = "darkolivegreen4", DEL_FFPE ="#3C5488FF",
+           DEL_PLASMA = "#3C5488FF", AMP_FFPE ="#E64B35FF", AMP_PLASMA ="#E64B35FF", AMP_DEL = "black", DEL_AMP = "black")
+  
+  alter_fun = list(
+    background = function(x, y, w, h) {
+      grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = "#CCCCCC", col = NA))
+      grid.segments(x, y-h*0.35, x, y + h*0.35, gp = gpar(lwd = 2))}, 
+    SNV_InDel_PLASMA = function(x, y, w, h) grid.rect(x-0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_PLASMA"], col = NA)),
+    SNV_InDel_FFPE = function(x, y, w, h) grid.rect(x+0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_FFPE"], col = NA)),
+    AMP_FFPE = function(x, y, w, h) grid.rect(x-w*0.11, y, w*0.19, h*0.7, gp = gpar(fill = col["AMP_FFPE"], col = NA)),
+    AMP_PLASMA = function(x, y, w, h) grid.rect(x+w*0.3, y, w*0.2, h*0.7, gp = gpar(fill = col["AMP_PLASMA"], col = NA)),
+    DEL_FFPE = function(x, y, w, h) grid.rect(x-0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_FFPE"], col = NA)),
+    DEL_PLASMA = function(x, y, w, h) grid.rect(x+0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_PLASMA"], col = NA))
+  )
+  #grid.segments(x - w*0.4, y - h*0.4, x + w*0.4, y + h*0.4, gp = gpar(lwd = 2))
+  
+  if (only_snv_for_frequency & top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)[1:top_rows]
+    oncoprint_df <- oncoprint_df[top_index, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  else if (top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+    oncoprint_df <- oncoprint_df[top_index, ][1:top_rows, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot())
+  print(is.null(top_annotation_df))
+  if(!is.null(top_annotation_df)){
+    
+    ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot(), 
+                            df = top_annotation_df, col = col_2)
+  }
+  
+  #top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)
+  
+  ccdata = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/data_clinica_n12.csv", header = TRUE,    sep = "{", encoding = "ASCII", stringsAsFactors = FALSE)
+  ccdata$ID = as.character(ccdata$ID)
+  ccdata$ID = factor (ccdata$ID, levels = c("107","138","158","161","185","204","207","242","243","261","8","85"))
+  
+  gender = ccdata[, "Gender"]
+  yearstobirth = as.numeric(ccdata[, "AGE"])
+  pathologicstage = ccdata[, "StStage"]
+  MSI = ccdata[,"MSI"]
+  tto = ccdata[,"TTO.Y.N."]
+ 
+  print(colnames(oncoprint_df))
+  print (tto)
+  print (MSI)
+  
+  colnames(oncoprint_df) = c("107","138","158","161","185","204","207","242","243","261","8","85")
+  colnames(oncoprint_df) = as.character(colnames(oncoprint_df))
+  print(colnames(oncoprint_df))
+  
+
+  ht <- ht <- oncoPrint(oncoprint_df,  heatmap_legend_param = c(list(labels_gp = gpar(fontsize = 16),
+                                                                     title_gp = gpar(fontsize = 20))),
+                        column_order =  c("161","204","207", "8","107","138","158","185","242","243","85","261"),
+                        alter_fun = alter_fun, col = col, alter_fun_is_vectorized = FALSE,  show_heatmap_legend =F,
+                        top_annotation = HeatmapAnnotation(cbar = anno_oncoprint_barplot(), annotation_name_side = "right",
+                                                           MSI = MSI, Treatment = tto,Stage = pathologicstage,
+                                                           col = list(Treatment = c("yes" = "mediumpurple1", "no" = "whitesmoke"), 
+                                                                      MSI = c("yes" = "lightsalmon3", "no" = "snow2"),
+                                                                      Stage = c("IIA" = "#B09C85FF", "IIB" = "#7E6148FF", "III" = "#4DBBD5FF",
+                                                                                "IIIB" = "#00A087FF", "IIIC" = "#3C5488FF")),
+                                                           annotation_legend_param = list(labels_gp = gpar(fontsize = 16), legend_direction = "horizontal",
+                                                                                            title_gp = gpar(fontsize = 20))),
+                        remove_empty_columns = FALSE, remove_empty_rows = TRUE, show_row_names = T, show_column_names = T,
+                        pct_gp = gpar(fontsize = 20), show_pct = F,  row_names_side = "left",
+                        column_names_gp = gpar(fontsize = 20),
+                        column_gap = unit(c(5), "mm"),  row_order = top_index)
+  
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom",heatmap_legend_list = list(
+    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
+  )))
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Fig4A.svg", width = 15, height = 20)
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom", heatmap_legend_list = list(
+   Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
+  dev.off()
+  return(oncoprint_df)
+}
+```
+
+
+```{r}
+cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP85_results_genes_def.txt")
+
+
+```
+
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files <-cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx85_results_genes_def.txt")
+```
+
+
+```{r}
+library(reshape2)
+
+#cns2 = read.csv("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG4A.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
+cm[is.na(cm)] = ""
+cm = cm[-1,]
+
+
+
+onco_df = as.data.frame(cm)
+onco_df <- onco_df[, order_df(ncol(onco_df)/2)]
+print_paired_samples(onco_df, cnv_files_p , cnv_files, top_rows = nrow(onco_df))
+
+
+```
+
+
+
+
+# Oncoprint
+
+
+################ Ext_Data FIG 1B ###############
+
+Función cuando hay que coger columnas pareadas
+```{r}
+
+#oncoprint_df <-plasma_exclusive_FFPE_exclusive_and_final_r_3
+#col_split = split_column
+#top_rows = 30
+#only_snv_for_frequency = T
+#  oncoprint_df[is.na(oncoprint_df)] <- ""
+oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for_frequency = F, 
+                               top_annotation_df = NULL, col_2 = c()){
+  
+  top_rows <- ifelse(top_rows == 0, nrow(oncoprint_df), top_rows)
+  
+  col <- c(SNV_InDel_FFPE = "darkolivegreen4", SNV_InDel_PLASMA = "darkolivegreen4", DEL_FFPE ="#3C5488FF",
+           DEL_PLASMA = "#3C5488FF", AMP_FFPE ="#E64B35FF", AMP_PLASMA ="#E64B35FF", AMP_DEL = "black", DEL_AMP = "black")
+  
+  alter_fun = list(
+    background = function(x, y, w, h) {
+      grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = "#CCCCCC", col = NA))
+      grid.segments(x, y-h*0.35, x, y + h*0.35, gp = gpar(lwd = 2))}, 
+    SNV_InDel_PLASMA = function(x, y, w, h) grid.rect(x-0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_PLASMA"], col = NA)),
+    SNV_InDel_FFPE = function(x, y, w, h) grid.rect(x+0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_FFPE"], col = NA)),
+    AMP_FFPE = function(x, y, w, h) grid.rect(x-w*0.11, y, w*0.19, h*0.7, gp = gpar(fill = col["AMP_FFPE"], col = NA)),
+    AMP_PLASMA = function(x, y, w, h) grid.rect(x+w*0.3, y, w*0.2, h*0.7, gp = gpar(fill = col["AMP_PLASMA"], col = NA)),
+    DEL_FFPE = function(x, y, w, h) grid.rect(x-0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_FFPE"], col = NA)),
+    DEL_PLASMA = function(x, y, w, h) grid.rect(x+0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_PLASMA"], col = NA))
+  )
+  #grid.segments(x - w*0.4, y - h*0.4, x + w*0.4, y + h*0.4, gp = gpar(lwd = 2))
+  
+  if (only_snv_for_frequency & top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)[1:top_rows]
+    oncoprint_df <- oncoprint_df[top_index, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  else if (top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+    oncoprint_df <- oncoprint_df[top_index, ][1:top_rows, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot())
+  print(is.null(top_annotation_df))
+  if(!is.null(top_annotation_df)){
+    
+    ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot(), 
+                            df = top_annotation_df, col = col_2)
+  }
+  
+  #top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)
+  
+  
+  
+  colnames(oncoprint_df) = c("M1","M10","M11","M12","M13","M14","M15","M2","M3","M4","M5","M6","M7","M8","M9")
+  colnames(oncoprint_df) = as.character(colnames(oncoprint_df))
+  print(colnames(oncoprint_df))
+  
+
+  ht <- ht <- oncoPrint(oncoprint_df,  heatmap_legend_param = c(list(labels_gp = gpar(fontsize = 16),
+                                                                     title_gp = gpar(fontsize = 20))),
+                        column_order =  c("M1","M2","M3","M4","M5","M6","M7","M8","M9","M10","M11","M12","M13","M14","M15"),
+                        alter_fun = alter_fun, col = col, alter_fun_is_vectorized = FALSE,  show_heatmap_legend =F,
+                        top_annotation = HeatmapAnnotation(cbar = anno_oncoprint_barplot(), annotation_name_side = "right"),
+                        remove_empty_columns = FALSE, remove_empty_rows = TRUE, show_row_names = T, show_column_names = T,
+                        pct_gp = gpar(fontsize = 20), show_pct = F,  row_names_side = "left",
+                        column_names_gp = gpar(fontsize = 20),
+                        column_gap = unit(c(5), "mm"),  row_order = top_index)
+  
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom",heatmap_legend_list = list(
+    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
+  )))
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_Fig1B.svg", width = 15, height = 15)
+  draw(ht, heatmap_legend_side = "right", heatmap_legend_list = list(
+   Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
+  dev.off()
+  return(oncoprint_df)
+}
+```
+
+
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M1_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M10_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M11_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M12_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M13_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M14_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M15_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M2_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M3_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M4_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M5_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M6_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M7_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M8_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/tumor/ET-M9_results_genes.txt")
+
+
+```
+
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M1_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M10_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M11_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M12_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M13_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M14_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M15_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M2_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M3_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M4_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M5_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M6_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M7_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M8_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M9_results_genes.txt")
+```
+
+
+
+```{r}
+library(reshape2)
+
+#cns2 = read.csv("/home/jmartin/Documentos/exomas/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG1B.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
+cm[is.na(cm)] = ""
+cm = cm[-1,]
+
+
+
+onco_df = as.data.frame(cm)
+onco_df <- onco_df[, order_df(ncol(onco_df)/2)]
+oncoprint_df = print_paired_samples(onco_df,cnv_files, cnv_files_p, top_rows = nrow(onco_df))
+
+```
+
+
+
+########## Ext_Data FIG 2 #########
+
+Función cuando hay que coger columnas pareadas
+```{r}
+
+#oncoprint_df <-plasma_exclusive_FFPE_exclusive_and_final_r_3
+#col_split = split_column
+#top_rows = 30
+#only_snv_for_frequency = T
+#  oncoprint_df[is.na(oncoprint_df)] <- ""
+oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for_frequency = F, 
+                               top_annotation_df = NULL, col_2 = c()){
+  
+  top_rows <- ifelse(top_rows == 0, nrow(oncoprint_df), top_rows)
+  
+  col <- c(SNV_InDel_FFPE = "darkolivegreen4", SNV_InDel_PLASMA = "darkolivegreen4", DEL_FFPE ="#3C5488FF",
+           DEL_PLASMA = "#3C5488FF", AMP_FFPE ="#E64B35FF", AMP_PLASMA ="#E64B35FF", AMP_DEL = "black", DEL_AMP = "black")
+  
+  alter_fun = list(
+    background = function(x, y, w, h) {
+      grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = "#CCCCCC", col = NA))
+      grid.segments(x, y-h*0.35, x, y + h*0.35, gp = gpar(lwd = 2))}, 
+    SNV_InDel_PLASMA = function(x, y, w, h) grid.rect(x-0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_PLASMA"], col = NA)),
+    SNV_InDel_FFPE = function(x, y, w, h) grid.rect(x+0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_FFPE"], col = NA)),
+    AMP_FFPE = function(x, y, w, h) grid.rect(x-w*0.11, y, w*0.19, h*0.7, gp = gpar(fill = col["AMP_FFPE"], col = NA)),
+    AMP_PLASMA = function(x, y, w, h) grid.rect(x+w*0.3, y, w*0.2, h*0.7, gp = gpar(fill = col["AMP_PLASMA"], col = NA)),
+    DEL_FFPE = function(x, y, w, h) grid.rect(x-0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_FFPE"], col = NA)),
+    DEL_PLASMA = function(x, y, w, h) grid.rect(x+0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_PLASMA"], col = NA))
+  )
+  #grid.segments(x - w*0.4, y - h*0.4, x + w*0.4, y + h*0.4, gp = gpar(lwd = 2))
+  
+  if (only_snv_for_frequency & top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)[1:top_rows]
+    oncoprint_df <- oncoprint_df[top_index, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  else if (top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+    oncoprint_df <- oncoprint_df[top_index, ][1:top_rows, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot())
+  print(is.null(top_annotation_df))
+  if(!is.null(top_annotation_df)){
+    
+    ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot(), 
+                            df = top_annotation_df, col = col_2)
+  }
+  
+  #top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)
+  
+  ccdata = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/data_clinica_n17.csv", header = TRUE,    sep = "{", encoding = "ASCII", stringsAsFactors = FALSE)
+  ccdata$ID = as.character(ccdata$ID)
+  ccdata$ID = factor (ccdata$ID, levels = c("104","107","13","136","138","150","158","185","189","204","242","243","259","261","49","62","63"))
+  
+  gender = ccdata[, "Gender"]
+  yearstobirth = as.numeric(ccdata[, "AGE"])
+  pathologicstage = ccdata[, "StStage"]
+  MSI = ccdata[,"MSI"]
+  tto = ccdata[,"TTO.Y.N."]
+ 
+  print(colnames(oncoprint_df))
+  print (tto)
+  print (MSI)
+  
+  colnames(oncoprint_df) = c("104","107","13","136","138","150","158","185","189","204","242","243","259","261","49","62","63")
+  colnames(oncoprint_df) = as.character(colnames(oncoprint_df))
+  print(colnames(oncoprint_df))
+  
+
+  ht <- ht <- oncoPrint(oncoprint_df,  heatmap_legend_param = c(list(labels_gp = gpar(fontsize = 16),
+                                                                     title_gp = gpar(fontsize = 20))),
+                        column_order =  c("104","107","13","136","138","150","158","185","189","204","242","243","259","261","49","62","63"),
+                        alter_fun = alter_fun, col = col, alter_fun_is_vectorized = FALSE,  show_heatmap_legend =F,
+                        top_annotation = HeatmapAnnotation(cbar = anno_oncoprint_barplot(), annotation_name_side = "right",
+                                                           MSI = MSI, Treatment = tto,Stage = pathologicstage,
+                                                           col = list(Treatment = c("yes" = "mediumpurple1", "no" = "whitesmoke"), 
+                                                                      MSI = c("yes" = "lightsalmon3", "no" = "snow2"),
+                                                                      Stage = c("IIA" = "#B09C85FF", "IIB" = "#7E6148FF", "III" = "#4DBBD5FF",
+                                                                                "IIIB" = "#00A087FF", "IIIC" = "#3C5488FF")),
+                                                           annotation_legend_param = list(labels_gp = gpar(fontsize = 16), legend_direction = "horizontal",
+                                                                                            title_gp = gpar(fontsize = 20))),
+                        remove_empty_columns = FALSE, remove_empty_rows = TRUE, show_row_names = T, show_column_names = T,
+                        pct_gp = gpar(fontsize = 20), show_pct = F,  row_names_side = "left",
+                        column_names_gp = gpar(fontsize = 20),
+                        column_gap = unit(c(5), "mm"),  row_order = top_index)
+  
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom",heatmap_legend_list = list(
+    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
+  )))
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_FIG2.svg", width = 15, height = 20)
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom", heatmap_legend_list = list(
+   Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
+  dev.off()
+  return(oncoprint_df)
+}
+```
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files <- c("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM104_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM107_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM13_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM136_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM138_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM150_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM158_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM185_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM189_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM204_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM242_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM243_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM259_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM261_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM49_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM62_results_genes_def.txt","/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/VPN/metastasis/cnvs/metastasis/EM63_results_genes_def.txt")
+```
+
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP104_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP13_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP136_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP150_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP189_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP259_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP49_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP62_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP63_results_genes_def.txt")
+```
+
+```{r}
+library(reshape2)
+
+#cns2 = read.csv("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG2.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
+cm[is.na(cm)] = ""
+cm = cm[-1,]
+
+
+
+onco_df = as.data.frame(cm)
+onco_df <- onco_df[, order_df(ncol(onco_df)/2)]
+oncoprint_df = print_paired_samples(onco_df,cnv_files, cnv_files_p, top_rows = nrow(onco_df))
+
+```
+
+
+
+
+########## Ext_Data FIG 4 ###############333
+
+```{r}
+
+#oncoprint_df <-plasma_exclusive_FFPE_exclusive_and_final_r_3
+#col_split = split_column
+#top_rows = 30
+#only_snv_for_frequency = T
+#  oncoprint_df[is.na(oncoprint_df)] <- ""
+oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for_frequency = F, 
+                               top_annotation_df = NULL, col_2 = c()){
+  
+  top_rows <- ifelse(top_rows == 0, nrow(oncoprint_df), top_rows)
+  
+  col <- c(SNV_InDel_FFPE = "darkolivegreen4", SNV_InDel_PLASMA = "darkolivegreen4", DEL_FFPE ="#3C5488FF",
+           DEL_PLASMA = "#3C5488FF", AMP_FFPE ="#E64B35FF", AMP_PLASMA ="#E64B35FF", AMP_DEL = "black", DEL_AMP = "black")
+  
+  alter_fun = list(
+    background = function(x, y, w, h) {
+      grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = "#CCCCCC", col = NA))
+      grid.segments(x, y-h*0.35, x, y + h*0.35, gp = gpar(lwd = 2))}, 
+    SNV_InDel_PLASMA = function(x, y, w, h) grid.rect(x-0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_PLASMA"], col = NA)),
+    SNV_InDel_FFPE = function(x, y, w, h) grid.rect(x+0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_FFPE"], col = NA)),
+    AMP_FFPE = function(x, y, w, h) grid.rect(x-w*0.11, y, w*0.19, h*0.7, gp = gpar(fill = col["AMP_FFPE"], col = NA)),
+    AMP_PLASMA = function(x, y, w, h) grid.rect(x+w*0.3, y, w*0.2, h*0.7, gp = gpar(fill = col["AMP_PLASMA"], col = NA)),
+    DEL_FFPE = function(x, y, w, h) grid.rect(x-0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_FFPE"], col = NA)),
+    DEL_PLASMA = function(x, y, w, h) grid.rect(x+0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_PLASMA"], col = NA))
+  )
+  #grid.segments(x - w*0.4, y - h*0.4, x + w*0.4, y + h*0.4, gp = gpar(lwd = 2))
+  
+  if (only_snv_for_frequency & top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)[1:top_rows]
+    oncoprint_df <- oncoprint_df[top_index, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  else if (top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+    oncoprint_df <- oncoprint_df[top_index, ][1:top_rows, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot())
+  print(is.null(top_annotation_df))
+  if(!is.null(top_annotation_df)){
+    
+    ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot(), 
+                            df = top_annotation_df, col = col_2)
+  }
+  
+  #top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)
+  
+  
+  
+  colnames(oncoprint_df) = c("M1","M10","M11","M12","M13","M14","M15","M2","M3","M4","M5","M6","M7","M8","M9")
+  colnames(oncoprint_df) = as.character(colnames(oncoprint_df))
+  print(colnames(oncoprint_df))
+  
+
+  ht <- ht <- oncoPrint(oncoprint_df,  heatmap_legend_param = c(list(labels_gp = gpar(fontsize = 16),
+                                                                     title_gp = gpar(fontsize = 20))),
+                        column_order =  c("M1","M2","M3","M4","M5","M6","M7","M8","M9","M10","M11","M12","M13","M14","M15"),
+                        alter_fun = alter_fun, col = col, alter_fun_is_vectorized = FALSE,  show_heatmap_legend =F,
+                        top_annotation = HeatmapAnnotation(cbar = anno_oncoprint_barplot(), annotation_name_side = "right"),
+                        remove_empty_columns = FALSE, remove_empty_rows = TRUE, show_row_names = T, show_column_names = T,
+                        pct_gp = gpar(fontsize = 20), show_pct = F,  row_names_side = "left",
+                        column_names_gp = gpar(fontsize = 20),
+                        column_gap = unit(c(5), "mm"),  row_order = top_index)
+  
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom",heatmap_legend_list = list(
+    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
+  )))
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_FIG4.svg", width = 15, height = 15)
+  draw(ht, heatmap_legend_side = "right", heatmap_legend_list = list(
+   Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
+  dev.off()
+  return(oncoprint_df)
+}
+```
+
+
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M1_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M10_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M11_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M12_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M13_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M14_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M15_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M2_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M3_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M4_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M5_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M6_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M7_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M8_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas-baseline/EPDx-M9_results_genes.txt")
+```
+
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M1_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M10_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M11_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M12_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M13_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M14_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M15_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M2_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M3_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M4_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M5_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M6_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M7_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M8_results_genes.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs_MOMA/plasmas/EP-M9_results_genes.txt")
+```
+
+```{r}
+library(reshape2)
+
+#cns2 = read.csv("/home/jmartin/Documentos/exomas/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG4.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
+cm[is.na(cm)] = ""
+cm = cm[-1,]
+
+
+
+onco_df = as.data.frame(cm)
+onco_df <- onco_df[, order_df(ncol(onco_df)/2)]
+oncoprint_df = print_paired_samples(onco_df,cnv_files, cnv_files_p, top_rows = nrow(onco_df))
+
+```
+
+
+############# Ext_Data FIG5A #################
+
+Función cuando hay que coger columnas pareadas
+```{r}
+
+#oncoprint_df <-plasma_exclusive_FFPE_exclusive_and_final_r_3
+#col_split = split_column
+#top_rows = 30
+#only_snv_for_frequency = T
+#  oncoprint_df[is.na(oncoprint_df)] <- ""
+oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for_frequency = F, 
+                               top_annotation_df = NULL, col_2 = c()){
+  
+  top_rows <- ifelse(top_rows == 0, nrow(oncoprint_df), top_rows)
+  
+  col <- c(SNV_InDel_FFPE = "darkolivegreen4", SNV_InDel_PLASMA = "darkolivegreen4", DEL_FFPE ="#3C5488FF",
+           DEL_PLASMA = "#3C5488FF", AMP_FFPE ="#E64B35FF", AMP_PLASMA ="#E64B35FF", AMP_DEL = "black", DEL_AMP = "black")
+  
+  alter_fun = list(
+    background = function(x, y, w, h) {
+      grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = "#CCCCCC", col = NA))
+      grid.segments(x, y-h*0.35, x, y + h*0.35, gp = gpar(lwd = 2))}, 
+    SNV_InDel_PLASMA = function(x, y, w, h) grid.rect(x-0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_PLASMA"], col = NA)),
+    SNV_InDel_FFPE = function(x, y, w, h) grid.rect(x+0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_FFPE"], col = NA)),
+    AMP_FFPE = function(x, y, w, h) grid.rect(x-w*0.11, y, w*0.19, h*0.7, gp = gpar(fill = col["AMP_FFPE"], col = NA)),
+    AMP_PLASMA = function(x, y, w, h) grid.rect(x+w*0.3, y, w*0.2, h*0.7, gp = gpar(fill = col["AMP_PLASMA"], col = NA)),
+    DEL_FFPE = function(x, y, w, h) grid.rect(x-0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_FFPE"], col = NA)),
+    DEL_PLASMA = function(x, y, w, h) grid.rect(x+0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_PLASMA"], col = NA))
+  )
+  #grid.segments(x - w*0.4, y - h*0.4, x + w*0.4, y + h*0.4, gp = gpar(lwd = 2))
+  
+  if (only_snv_for_frequency & top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)[1:top_rows]
+    oncoprint_df <- oncoprint_df[top_index, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  else if (top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+    oncoprint_df <- oncoprint_df[top_index, ][1:top_rows, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot())
+  print(is.null(top_annotation_df))
+  if(!is.null(top_annotation_df)){
+    
+    ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot(), 
+                            df = top_annotation_df, col = col_2)
+  }
+  
+  #top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)
+  
+  ccdata = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/data_clinica_n25.csv", header = TRUE,    sep = "{", encoding = "ASCII", stringsAsFactors = FALSE)
+  ccdata$ID = as.character(ccdata$ID)
+  ccdata$ID = factor (ccdata$ID, levels = c("7","13","49","161","189","204","207",
+                                                             "8","24","45","48","62","63","104",
+                                                             "107","136","138","150","158","185",
+                                                             "242","243","85","259","261"))
+  
+  gender = ccdata[, "Gender"]
+  yearstobirth = as.numeric(ccdata[, "AGE"])
+  pathologicstage = ccdata[, "StStage"]
+  MSI = ccdata[,"MSI"]
+  tto = ccdata[,"TTO.Y.N."]
+ 
+  print(colnames(oncoprint_df))
+  print (tto)
+  print (MSI)
+  
+  colnames(oncoprint_df) = c("7","13","49","161","189","204","207",
+                                                             "8","24","45","48","62","63","104",
+                                                             "107","136","138","150","158","185",
+                                                             "242","243","85","259","261")
+  colnames(oncoprint_df) = as.character(colnames(oncoprint_df))
+  print(colnames(oncoprint_df))
+  
+
+  ht <- ht <- oncoPrint(oncoprint_df,  heatmap_legend_param = c(list(labels_gp = gpar(fontsize = 16),
+                                                                     title_gp = gpar(fontsize = 20))),
+                        column_order =  c("7","13","49","161","189","204","207",
+                                                             "8","24","45","48","62","63","104",
+                                                             "107","136","138","150","158","185",
+                                                             "242","243","85","259","261"),
+                        alter_fun = alter_fun, col = col, alter_fun_is_vectorized = FALSE,  show_heatmap_legend =F,
+                        top_annotation = HeatmapAnnotation(cbar = anno_oncoprint_barplot(), annotation_name_side = "right",
+                                                           MSI = MSI, Treatment = tto,Stage = pathologicstage,
+                                                           col = list(Treatment = c("yes" = "mediumpurple1", "no" = "whitesmoke"), 
+                                                                      MSI = c("yes" = "lightsalmon3", "no" = "snow2"),
+                                                                      Stage = c("IIA" = "#B09C85FF", "IIB" = "#7E6148FF", "III" = "#4DBBD5FF",
+                                                                                "IIIB" = "#00A087FF", "IIIC" = "#3C5488FF")),
+                                                           annotation_legend_param = list(labels_gp = gpar(fontsize = 16), legend_direction = "horizontal",
+                                                                                            title_gp = gpar(fontsize = 20))),
+                        remove_empty_columns = FALSE, remove_empty_rows = TRUE, show_row_names = T, show_column_names = T,
+                        pct_gp = gpar(fontsize = 20), show_pct = F,  row_names_side = "left",
+                        column_names_gp = gpar(fontsize = 20),
+                        column_gap = unit(c(5), "mm"),  row_order = top_index)
+  
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom",heatmap_legend_list = list(
+    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
+  )))
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_Fig5A.svg", width = 15, height = 20)
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom", heatmap_legend_list = list(
+   Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
+  dev.off()
+  return(oncoprint_df)
+}
+```
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET104_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET13_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET136_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET150_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET189_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET24_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET259_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET45_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET48_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET49_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET62_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET63_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET7_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET85_results_genes_def.txt")
+
+
+```
+
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP104_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP13_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP136_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP150_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP189_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP24_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP259_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP45_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP48_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP49_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP62_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP63_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP7_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP85_results_genes_def.txt")
+```
+
+
+
+
+```{r}
+library(reshape2)
+
+#cns2 = read.csv("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG5A.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
+cm[is.na(cm)] = ""
+cm = cm[-1,]
+
+
+
+onco_df = as.data.frame(cm)
+onco_df <- onco_df[, order_df(ncol(onco_df)/2)]
+oncoprint_df = print_paired_samples(onco_df,cnv_files, cnv_files_p, top_rows = nrow(onco_df))
+
+```
