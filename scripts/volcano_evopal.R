@@ -2,7 +2,7 @@
 ################# INCLIVA ###############3
 
 
-de <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG4B1.csv", header =T, dec='.', sep='\t')
+de <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG5B1.csv", header =T, dec='.', sep='\t')
 
 
 # add a column of NAs
@@ -56,7 +56,7 @@ dev.off()
 
 ################# MOMA ##################
 
-de <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG4B2.csv", header =T, dec='.', sep='\t')
+de <- read.csv2("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG5B2.csv", header =T, dec='.', sep='\t')
 
 
 # add a column of NAs
@@ -91,7 +91,7 @@ de$delabel[de$diffexpressed != "-"] <- de$GENE[de$diffexpressed != "-"]
 # load library
 library(ggrepel)
 # plot adding up all layers we have seen so far
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/FIG4B2.svg", width = 18, height = 13)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/FIG5B2.svg", width = 18, height = 13)
 ggplot(data=de, aes(x=LOG2, y=-log10(pvalue), col=diffexpressed, label=delabel)) +
   geom_point() + 
   theme_minimal() +

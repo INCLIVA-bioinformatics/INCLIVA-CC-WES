@@ -13,11 +13,11 @@ all_abundance = as.data.frame(c("Suffix_Patient" = c(), "Patient" = c(), "metast
 
 for (name in names) {
 
-  evidence <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/inputs/FIG4D/", name, "_evidence.txt"), header =T, dec='.', sep='\t')
+  evidence <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/inputs/FIG5D/", name, "_evidence.txt"), header =T, dec='.', sep='\t')
   
-  neo_data <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/inputs/FIG4D/", name, "_sequences.txt"), header =T, dec='.', sep='\t')
+  neo_data <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/inputs/FIG5D/", name, "_sequences.txt"), header =T, dec='.', sep='\t')
   
-  protein_groups <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/inputs/FIG4D/", name, "_proteinGroups.txt"), header =T, dec='.', sep='\t')
+  protein_groups <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/inputs/FIG5D/", name, "_proteinGroups.txt"), header =T, dec='.', sep='\t')
   
   neoepitopes = unique(neo_data$Sequence)
   
@@ -149,7 +149,7 @@ data_mean <- left_join(data_mean, t_test_results, by = "Patient")
 
 data_mean$Patient <- factor(data_mean$Patient, levels = sort(unique(data_mean$Patient), decreasing = TRUE))
 
-svg(file="/home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/figures/FIG4D.svg", width = 4, height = 8)
+svg(file="/home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/figures/FIG5D.svg", width = 4, height = 8)
 
 p = ggplot(data_mean, aes(x = group, y = factor(Patient), fill = mean_abundance)) +
   geom_tile(color = "white") + 
@@ -171,3 +171,29 @@ p = ggplot(data_mean, aes(x = group, y = factor(Patient), fill = mean_abundance)
   annotate("text", x = 1.5, y = 0.5, label = "p-value < 0.001", size = 4.7, vjust = 1.5, colour = "black") 
 p
 dev.off()
+
+
+
+
+############ FIGURE 5E ##################
+
+
+#libraries
+library(pheatmap)
+
+summary_df <- read.csv2("/home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/inputs/input_FIG5E.csv", header =T, dec='.', sep=',')
+
+
+#plot
+heatmap_data <- summary_df %>%
+  select(variable, mean_ratio_wt_prim, mean_ratio_mut_prim, p_value) %>%
+  column_to_rownames("variable")
+
+rownames(heatmap_data) <- paste(rownames(heatmap_data), "p=", round(heatmap_data$p_value, 4), sep = " ")
+
+pheatmap(
+  heatmap_data[, c("mean_ratio_wt_prim", "mean_ratio_mut_prim")],
+  color = colorRampPalette(c("white", "blue"))(100),              
+  show_rownames = TRUE,                                          
+  fontsize = 10                                                   
+)

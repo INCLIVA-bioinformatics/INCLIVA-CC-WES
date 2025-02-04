@@ -5,9 +5,9 @@ library(tidyverse)
 library(ComplexHeatmap)
 library(reshape2)
 
-############ SUPP FIG 9A #########
+############ Ext_Data FIG 9A #########
 
-data <- read.delim("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG10A.tsv")
+data <- read.delim("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG10A.tsv")
 data <- data %>% remove_rownames %>% column_to_rownames(var="X")
 
 data2 = data[!(row.names(data) %in% "CTO51"),]
@@ -15,14 +15,14 @@ data2 = data[!(row.names(data) %in% "CTO51"),]
 dd <- dist(data2, method = "binary")
 hc <- hclust(dd, method = "ward.D2")
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG9A.svg", width = 15, height = 10)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_FIG9A.svg", width = 15, height = 10)
 ggdendrogram(hc, rotate = TRUE, theme_dendro = T)
 dev.off()
 
 
-############ SUPP FIG 10B #########
+############ Ext_Data FIG 10B #########
 
-data = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG9B.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+data = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG9B.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
 data$MUESTRA <- factor( as.character(data$MUESTRA), levels=c("161-CTO65","49-CTO147","185-CTO119") )
 
@@ -52,8 +52,7 @@ heatmap_legend_param = list(title = "Mutation stage", at = c("R", "RB", "B"),
                             labels = c("ONLY IN THE PATIENT", "IN THE PATIENT AND IN THE ORGANOID", "ONLY IN THE ORGANOID"), direction = "horizontal")
 column_title = "TARGETEABLE MUTATIONS CC PATIENTS - ORGANOID MODELS"
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG9B.svg", width = 8, height = 9)
-#postscript(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG9B.eps", width = 8, height = 9)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_FIG9B.svg", width = 8, height = 9)
 
 plot_t =  oncoPrint(m,
                     alter_fun = alter_fun, col = col, 

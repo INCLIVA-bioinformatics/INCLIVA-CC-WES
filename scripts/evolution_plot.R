@@ -3,7 +3,7 @@ library(ggplot2)
 library(cowplot)
 
 
-###################### SUPP FIG 6A #####################
+###################### Ext_Data FIG 6A #####################
 
 
 muestras = c("85","107","161","185","207","243","261")
@@ -11,7 +11,7 @@ lista = list()
 myplots <- vector('list', length(muestras))
 i = 1
 for ( mu in muestras) {
-  data2 <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/inputs/Supp_FIG6/counts_", mu, ".txt"), header =T, dec='.', sep=',')
+  data2 <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/inputs/Ext_Data_FIG6/counts_", mu, ".txt"), header =T, dec='.', sep=',')
   data2$names = factor(data2$names, levels = rev(c("tissue", "plasma_bl","tissue:plasma_bl",  "tissue:plasma_po" , "tissue:plasma_bl:plasma_po",
                                                    "plasma_bl:plasma_po", "tissue:plasma_re",  "plasma_bl:plasma_re", 
                                                    "tissue:plasma_bl:plasma_po:plasma_re","tissue:plasma_bl:plasma_re",
@@ -43,7 +43,7 @@ a = plot_grid(myplots[[1]]  + theme(legend.position="none"), myplots[[2]] + them
               nrow = 4)
 
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_Fig6a.svg", width = 20, height = 12)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_Fig6a.svg", width = 20, height = 12)
 plot_grid(a , legend, align = "h", 
           axis = "lr",
           ncol = 2,  rel_widths = c(6/8, 2/8))
@@ -51,7 +51,7 @@ dev.off()
 
 
 
-###################### SUPP FIG 6B #####################
+###################### Ext_Data FIG 6B #####################
 
 
 muestras = c("M1","M2","M3","M5","M6","M7","M8","M9","M10","M11","M12","M13","M14","M15")
@@ -60,7 +60,7 @@ myplots <- vector('list', length(muestras))
 i = 1
 for ( mu in muestras) {
   
-  data2 <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/inputs/Supp_FIG6/counts_", mu, ".txt"), header =T, dec='.', sep=',')
+  data2 <- read.csv2(paste0("/home/jmartin/Documents/articulo/scripts/inputs/Ext_Data_FIG6/counts_", mu, ".txt"), header =T, dec='.', sep=',')
   data2$names = factor(data2$names, levels = rev(c("tissue", "plasma_bl","tissue:plasma_bl",  "tissue:plasma_po" , "tissue:plasma_bl:plasma_po",
                                                    "plasma_bl:plasma_po", "tissue:plasma_re",  "plasma_bl:plasma_re", 
                                                    "tissue:plasma_bl:plasma_po:plasma_re","tissue:plasma_bl:plasma_re",
@@ -95,7 +95,7 @@ a = plot_grid(myplots[[1]]  + theme(legend.position="none"), myplots[[2]] + them
           axis = "lr",
           nrow = 4)
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_Fig6B.svg", width = 20, height = 12)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_Fig6B.svg", width = 20, height = 12)
 plot_grid(a , legend, align = "h", 
           axis = "lr",
           ncol = 2,  rel_widths = c(6/8, 2/8))
@@ -104,9 +104,9 @@ dev.off()
 
 
 
-################ SUPP FIG 6C ############
+################ Ext_Data FIG 6C ############
 
-data = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG6C.txt", header = TRUE, sep = "\t", encoding = "ASCII")
+data = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG6C.txt", header = TRUE, sep = "\t", encoding = "ASCII")
 
 # Cargar las librerías necesarias
 library(reshape2)
@@ -122,7 +122,7 @@ data_long <- melt(data, id.vars = "ID", variable.name = "Group", value.name = "Y
 data_long$Classification <- ifelse(data_long$Y > 0, "Epithelial", "Mesenchymal")
 
 # Crear el gráfico
-svg(file="//home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/figures/Supp_FIG6C.svg", width = 12, height = 6)
+svg(file="//home/jmartin/Documents/articulo/scripts/repo_actualizado/INCLIVA-CC-WES/figures/Ext_Data_FIG6C.svg", width = 12, height = 6)
 ggplot(data_long, aes(x = ID, y = Y, color = Group)) +
   geom_point() +  # Dibujar puntos
   geom_hline(yintercept = 0, linetype = "dashed") +  # Añadir la línea horizontal en Y=0

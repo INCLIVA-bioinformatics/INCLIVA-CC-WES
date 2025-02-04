@@ -7,12 +7,12 @@ library(patchwork)
 library(gridExtra)
 library(cowplot)
 
-#################### SUPP FIGURE 7A ###############
+#################### Ext_Data FIGURE 7A ###############
 
 
 ###################### INPUT DATA   ######################
 
-signatures = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG7A.csv", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+signatures = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG7A.csv", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
 clinica = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/data_clinica_25.csv", header = TRUE, sep = "{", encoding = "ASCII", stringsAsFactors = FALSE)
 
@@ -71,7 +71,7 @@ batch = ggplot(clinica, aes(fill=BATCH, y=Num, x=Samples))  +
   theme(axis.text.x=element_blank(), axis.ticks.x=element_blank(),axis.text.y=element_blank(), axis.ticks.y=element_blank())
 
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_Fig7A.svg", width = 28, height = 15)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_Fig7A.svg", width = 28, height = 15)
 plot_grid(age + theme(legend.position = "left", legend.key.size = unit(0.5, 'cm'), legend.title = element_text(size=8)),
           tto+ theme( legend.text = element_text(size=8), legend.key.size = unit(0.5, 'cm'), legend.title = element_text(size=8)),
           batch+ theme(legend.position = "left", legend.key.size = unit(0.5, 'cm'), legend.title = element_text(size=8)), 
@@ -88,18 +88,18 @@ dev.off()
 
 
 
-#################### SUPP FIGURE 7b ###############
+#################### Ext_Data FIGURE 7b ###############
 
 
 ###################### INPUT DATA ######################
 
-signatures = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG7B1.csv", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+signatures = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG7B1.csv", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
-signatures2 = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG7A.csv", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+signatures2 = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG7A.csv", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
 signatures3 = signatures2[signatures2$Samples %in% c("EP107", "EP138", "EP8",  "EP161", "EP185", "EP204", "EP207", "EP242", "EP243", "EP158","EP85","EP261"),]
 
-clinica = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG672.csv", header = TRUE, sep = "{", encoding = "ASCII", stringsAsFactors = FALSE)
+clinica = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG672.csv", header = TRUE, sep = "{", encoding = "ASCII", stringsAsFactors = FALSE)
 
 signatures$Samples = factor(signatures$Samples, levels = c("EPDx107", "EPDx138", "EPDx8",  "EPDx161", "EPDx185", "EPDx204", "EPDx207", "EPDx242", "EPDx243", "EPDx158","EPDx85","EPDx261"))
 signatures3$Samples = factor(signatures3$Samples, levels = c("EP107", "EP138", "EP8",  "EP161", "EP185", "EP204", "EP207", "EP242", "EP243", "EP158","EP85","EP261"))
@@ -166,7 +166,7 @@ batch = ggplot(clinica, aes(fill=BATCH, y=Num, x=Samples))  +
   theme(axis.text.x=element_blank(), axis.ticks.x=element_blank(),axis.text.y=element_blank(), axis.ticks.y=element_blank())
 
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_Fig7B.svg", width = 18, height = 15)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_Fig7B.svg", width = 18, height = 15)
 plot_grid(age + theme(legend.position = "left", legend.key.size = unit(0.5, 'cm'), legend.title = element_text(size=8)),
           tto+ theme( legend.text = element_text(size=8), legend.key.size = unit(0.5, 'cm'), legend.title = element_text(size=8)),
           batch+ theme(legend.position = "left", legend.key.size = unit(0.5, 'cm'), legend.title = element_text(size=8)), 

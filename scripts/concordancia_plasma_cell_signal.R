@@ -9,8 +9,8 @@ library(ggrepel)
 
 #juntar el df infiltration por la columna Mixture con el df porcentaje_exlusivo_PLASMA.BL_PLASMA por la columna ID.
 
-porcentaje_exclusivo_PLASMA.BL_PLASMA = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/Supp_FIG6/input_Supp_Fig6C1.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
-infiltrarion = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/Supp_FIG6/input_Supp_Fig6C2.csv", header = TRUE, sep = ";", encoding = "ASCII", stringsAsFactors = FALSE)
+porcentaje_exclusivo_PLASMA.BL_PLASMA = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/Ext_Data_FIG6/input_Ext_Data_Fig6C1.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+infiltrarion = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/Ext_Data_FIG6/input_Ext_Data_Fig6C2.csv", header = TRUE, sep = ";", encoding = "ASCII", stringsAsFactors = FALSE)
 
 porcentaje_exclusivo_PLASMA.BL_PLASMA$ID <- paste0("EP", porcentaje_exclusivo_PLASMA.BL_PLASMA$ID)
 
@@ -26,7 +26,7 @@ correlation_long <- reshape2::melt(correlation_matrix)
 cor_result <- cor.test(merged_df$CONCORDANCIA, merged_df$Plasma.cells)
 
 
-svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_Fig6C.svg", width = 10, height = 8)
+svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_Fig6C.svg", width = 10, height = 8)
 ggplot(merged_df, aes(x = CONCORDANCIA, y = Plasma.cells
 )) +
   geom_point(size = 3, color = "grey20", shape = 20, alpha = 0.7, aes(color = cor_result$p.value < 0.05)) +

@@ -1,6 +1,6 @@
 Eso---
 title: "Proyecto cáncer páncreas - exomas"
-author: "Sheila Zúñiga y Fabián Robledo"
+author: "Jorge Martín-Arana"
 date: "15/12/2021"
 output: html_document
 ---
@@ -353,144 +353,7 @@ order_df <- function(n){
 
 # Oncoprint
 
-############### FIG2A ################
-
-Función cuando hay que coger columnas pareadas
-```{r}
-
-#oncoprint_df <-plasma_exclusive_FFPE_exclusive_and_final_r_3
-#col_split = split_column
-#top_rows = 30
-#only_snv_for_frequency = T
-#  oncoprint_df[is.na(oncoprint_df)] <- ""
-oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for_frequency = F, 
-                               top_annotation_df = NULL, col_2 = c()){
-  
-  top_rows <- ifelse(top_rows == 0, nrow(oncoprint_df), top_rows)
-  
-  col <- c(SNV_InDel_FFPE = "darkolivegreen4", SNV_InDel_PLASMA = "darkolivegreen4", DEL_FFPE ="#3C5488FF",
-           DEL_PLASMA = "#3C5488FF", AMP_FFPE ="#E64B35FF", AMP_PLASMA ="#E64B35FF", AMP_DEL = "black", DEL_AMP = "black")
-  
-  alter_fun = list(
-    background = function(x, y, w, h) {
-      grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = "#CCCCCC", col = NA))
-      grid.segments(x, y-h*0.35, x, y + h*0.35, gp = gpar(lwd = 2))}, 
-    SNV_InDel_PLASMA = function(x, y, w, h) grid.rect(x-0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_PLASMA"], col = NA)),
-    SNV_InDel_FFPE = function(x, y, w, h) grid.rect(x+0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_FFPE"], col = NA)),
-    AMP_FFPE = function(x, y, w, h) grid.rect(x-w*0.11, y, w*0.19, h*0.7, gp = gpar(fill = col["AMP_FFPE"], col = NA)),
-    AMP_PLASMA = function(x, y, w, h) grid.rect(x+w*0.3, y, w*0.2, h*0.7, gp = gpar(fill = col["AMP_PLASMA"], col = NA)),
-    DEL_FFPE = function(x, y, w, h) grid.rect(x-0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_FFPE"], col = NA)),
-    DEL_PLASMA = function(x, y, w, h) grid.rect(x+0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_PLASMA"], col = NA))
-  )
-  #grid.segments(x - w*0.4, y - h*0.4, x + w*0.4, y + h*0.4, gp = gpar(lwd = 2))
-  
-  if (only_snv_for_frequency & top_rows != 0){
-    top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)[1:top_rows]
-    oncoprint_df <- oncoprint_df[top_index, ]
-    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
-  }
-  else if (top_rows != 0){
-    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
-    oncoprint_df <- oncoprint_df[top_index, ][1:top_rows, ]
-    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
-  }
-  ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot())
-  print(is.null(top_annotation_df))
-  if(!is.null(top_annotation_df)){
-    
-    ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot(), 
-                            df = top_annotation_df, col = col_2)
-  }
-  
-  #top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
-  top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)
-  
-  ccdata = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/data_clinica_n12.csv", header = TRUE,    sep = "{", encoding = "ASCII", stringsAsFactors = FALSE)
-  ccdata$ID = as.character(ccdata$ID)
-  ccdata$ID = factor (ccdata$ID, levels = c("107","138","158","161","185","204","207","242","243","261","8","85"))
-  
-  gender = ccdata[, "Gender"]
-  yearstobirth = as.numeric(ccdata[, "AGE"])
-  pathologicstage = ccdata[, "StStage"]
-  MSI = ccdata[,"MSI"]
-  tto = ccdata[,"TTO.Y.N."]
- 
-  print(colnames(oncoprint_df))
-  print (tto)
-  print (MSI)
-  
-  colnames(oncoprint_df) = c("107","138","158","161","185","204","207","242","243","261","8","85")
-  colnames(oncoprint_df) = as.character(colnames(oncoprint_df))
-  print(colnames(oncoprint_df))
-  
-
-  ht <- ht <- oncoPrint(oncoprint_df,  heatmap_legend_param = c(list(labels_gp = gpar(fontsize = 16),
-                                                                     title_gp = gpar(fontsize = 20))),
-                        column_order =  c("161","204","207", "8","107","138","158","185","242","243","85","261"),
-                        alter_fun = alter_fun, col = col, alter_fun_is_vectorized = FALSE,  show_heatmap_legend =F,
-                        top_annotation = HeatmapAnnotation(cbar = anno_oncoprint_barplot(), annotation_name_side = "right",
-                                                           MSI = MSI, Treatment = tto,Stage = pathologicstage,
-                                                           col = list(Treatment = c("yes" = "mediumpurple1", "no" = "whitesmoke"), 
-                                                                      MSI = c("yes" = "lightsalmon3", "no" = "snow2"),
-                                                                      Stage = c("IIA" = "#B09C85FF", "IIB" = "#7E6148FF", "III" = "#4DBBD5FF",
-                                                                                "IIIB" = "#00A087FF", "IIIC" = "#3C5488FF")),
-                                                           annotation_legend_param = list(labels_gp = gpar(fontsize = 16), legend_direction = "horizontal",
-                                                                                            title_gp = gpar(fontsize = 20))),
-                        remove_empty_columns = FALSE, remove_empty_rows = TRUE, show_row_names = T, show_column_names = T,
-                        pct_gp = gpar(fontsize = 20), show_pct = F,  row_names_side = "left",
-                        column_names_gp = gpar(fontsize = 20),
-                        column_gap = unit(c(5), "mm"),  row_order = top_index)
-  
-  draw(ht, annotation_legend_side = "bottom",
-          heatmap_legend_side = "bottom",heatmap_legend_list = list(
-    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
-  )))
-  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Fig2A.svg", width = 15, height = 20)
-  draw(ht, annotation_legend_side = "bottom",
-          heatmap_legend_side = "bottom", heatmap_legend_list = list(
-   Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
-  dev.off()
-  return(oncoprint_df)
-}
-```
-
-```{r}
-cnv_files <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET85_results_genes_def.txt")
-
-
-```
-
-
-Definición de la ubicación de los ficheros de CNVs en FFPE individuales
-```{r}
-cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx85_results_genes_def.txt")
-```
-
-
-```{r}
-library(reshape2)
-
-#cns2 = read.csv("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
-
-muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG2A.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
-
-cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
-cm[is.na(cm)] = ""
-cm = cm[-1,]
-
-
-
-onco_df = as.data.frame(cm)
-onco_df <- onco_df[, order_df(ncol(onco_df)/2)]
-print_paired_samples(onco_df, cnv_files , cnv_files_p, top_rows = nrow(onco_df))
-
-```
-
-
-
-
-
-############# FIG3A ################
+############### FIG3A ################
 
 Función cuando hay que coger columnas pareadas
 ```{r}
@@ -591,6 +454,143 @@ oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for
 }
 ```
 
+```{r}
+cnv_files <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/tumor/ET85_results_genes_def.txt")
+
+
+```
+
+
+Definición de la ubicación de los ficheros de CNVs en FFPE individuales
+```{r}
+cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas-baseline/EPDx85_results_genes_def.txt")
+```
+
+
+```{r}
+library(reshape2)
+
+#cns2 = read.csv("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG3A.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+
+cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
+cm[is.na(cm)] = ""
+cm = cm[-1,]
+
+
+
+onco_df = as.data.frame(cm)
+onco_df <- onco_df[, order_df(ncol(onco_df)/2)]
+print_paired_samples(onco_df, cnv_files , cnv_files_p, top_rows = nrow(onco_df))
+
+```
+
+
+
+
+
+############# FIG4A ################
+
+Función cuando hay que coger columnas pareadas
+```{r}
+
+#oncoprint_df <-plasma_exclusive_FFPE_exclusive_and_final_r_3
+#col_split = split_column
+#top_rows = 30
+#only_snv_for_frequency = T
+#  oncoprint_df[is.na(oncoprint_df)] <- ""
+oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for_frequency = F, 
+                               top_annotation_df = NULL, col_2 = c()){
+  
+  top_rows <- ifelse(top_rows == 0, nrow(oncoprint_df), top_rows)
+  
+  col <- c(SNV_InDel_FFPE = "darkolivegreen4", SNV_InDel_PLASMA = "darkolivegreen4", DEL_FFPE ="#3C5488FF",
+           DEL_PLASMA = "#3C5488FF", AMP_FFPE ="#E64B35FF", AMP_PLASMA ="#E64B35FF", AMP_DEL = "black", DEL_AMP = "black")
+  
+  alter_fun = list(
+    background = function(x, y, w, h) {
+      grid.rect(x, y, w*0.8, h*0.7, gp = gpar(fill = "#CCCCCC", col = NA))
+      grid.segments(x, y-h*0.35, x, y + h*0.35, gp = gpar(lwd = 2))}, 
+    SNV_InDel_PLASMA = function(x, y, w, h) grid.rect(x-0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_PLASMA"], col = NA)),
+    SNV_InDel_FFPE = function(x, y, w, h) grid.rect(x+0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["SNV_InDel_FFPE"], col = NA)),
+    AMP_FFPE = function(x, y, w, h) grid.rect(x-w*0.11, y, w*0.19, h*0.7, gp = gpar(fill = col["AMP_FFPE"], col = NA)),
+    AMP_PLASMA = function(x, y, w, h) grid.rect(x+w*0.3, y, w*0.2, h*0.7, gp = gpar(fill = col["AMP_PLASMA"], col = NA)),
+    DEL_FFPE = function(x, y, w, h) grid.rect(x-0.11*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_FFPE"], col = NA)),
+    DEL_PLASMA = function(x, y, w, h) grid.rect(x+0.3*w, y, w*0.2, h*0.7, gp = gpar(fill = col["DEL_PLASMA"], col = NA))
+  )
+  #grid.segments(x - w*0.4, y - h*0.4, x + w*0.4, y + h*0.4, gp = gpar(lwd = 2))
+  
+  if (only_snv_for_frequency & top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)[1:top_rows]
+    oncoprint_df <- oncoprint_df[top_index, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  else if (top_rows != 0){
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+    oncoprint_df <- oncoprint_df[top_index, ][1:top_rows, ]
+    top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  }
+  ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot())
+  print(is.null(top_annotation_df))
+  if(!is.null(top_annotation_df)){
+    
+    ha <- HeatmapAnnotation(cbar = anno_oncoprint_barplot(), 
+                            df = top_annotation_df, col = col_2)
+  }
+  
+  #top_index = order(apply(oncoprint_df, 1, function(x) sum(x != "")), decreasing = TRUE)
+  top_index = order(apply(oncoprint_df, 1, function(x) sum(grepl("SNV_InDel",x))), decreasing = TRUE)
+  
+  ccdata = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/data_clinica_n12.csv", header = TRUE,    sep = "{", encoding = "ASCII", stringsAsFactors = FALSE)
+  ccdata$ID = as.character(ccdata$ID)
+  ccdata$ID = factor (ccdata$ID, levels = c("107","138","158","161","185","204","207","242","243","261","8","85"))
+  
+  gender = ccdata[, "Gender"]
+  yearstobirth = as.numeric(ccdata[, "AGE"])
+  pathologicstage = ccdata[, "StStage"]
+  MSI = ccdata[,"MSI"]
+  tto = ccdata[,"TTO.Y.N."]
+ 
+  print(colnames(oncoprint_df))
+  print (tto)
+  print (MSI)
+  
+  colnames(oncoprint_df) = c("107","138","158","161","185","204","207","242","243","261","8","85")
+  colnames(oncoprint_df) = as.character(colnames(oncoprint_df))
+  print(colnames(oncoprint_df))
+  
+
+  ht <- ht <- oncoPrint(oncoprint_df,  heatmap_legend_param = c(list(labels_gp = gpar(fontsize = 16),
+                                                                     title_gp = gpar(fontsize = 20))),
+                        column_order =  c("161","204","207", "8","107","138","158","185","242","243","85","261"),
+                        alter_fun = alter_fun, col = col, alter_fun_is_vectorized = FALSE,  show_heatmap_legend =F,
+                        top_annotation = HeatmapAnnotation(cbar = anno_oncoprint_barplot(), annotation_name_side = "right",
+                                                           MSI = MSI, Treatment = tto,Stage = pathologicstage,
+                                                           col = list(Treatment = c("yes" = "mediumpurple1", "no" = "whitesmoke"), 
+                                                                      MSI = c("yes" = "lightsalmon3", "no" = "snow2"),
+                                                                      Stage = c("IIA" = "#B09C85FF", "IIB" = "#7E6148FF", "III" = "#4DBBD5FF",
+                                                                                "IIIB" = "#00A087FF", "IIIC" = "#3C5488FF")),
+                                                           annotation_legend_param = list(labels_gp = gpar(fontsize = 16), legend_direction = "horizontal",
+                                                                                            title_gp = gpar(fontsize = 20))),
+                        remove_empty_columns = FALSE, remove_empty_rows = TRUE, show_row_names = T, show_column_names = T,
+                        pct_gp = gpar(fontsize = 20), show_pct = F,  row_names_side = "left",
+                        column_names_gp = gpar(fontsize = 20),
+                        column_gap = unit(c(5), "mm"),  row_order = top_index)
+  
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom",heatmap_legend_list = list(
+    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
+  )))
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Fig4A.svg", width = 15, height = 20)
+  draw(ht, annotation_legend_side = "bottom",
+          heatmap_legend_side = "bottom", heatmap_legend_list = list(
+   Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
+  dev.off()
+  return(oncoprint_df)
+}
+```
+
 
 ```{r}
 cnv_files_p <- c("/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP107_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP138_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP158_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP161_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP185_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP204_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP207_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP242_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP243_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP261_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP8_results_genes_def.txt","/home/jmartin/Documents/articulo/scripts/inputs/CNVs/plasmas/EP85_results_genes_def.txt")
@@ -610,7 +610,7 @@ library(reshape2)
 
 #cns2 = read.csv("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
-muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG3A.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_FIG4A.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
 cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
 cm[is.na(cm)] = ""
@@ -631,7 +631,7 @@ print_paired_samples(onco_df, cnv_files_p , cnv_files, top_rows = nrow(onco_df))
 # Oncoprint
 
 
-################ SUPP FIG 1B ###############
+################ Ext_Data FIG 1B ###############
 
 Función cuando hay que coger columnas pareadas
 ```{r}
@@ -704,7 +704,7 @@ oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for
           heatmap_legend_side = "bottom",heatmap_legend_list = list(
     Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
   )))
-  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_Fig1B.svg", width = 15, height = 15)
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_Fig1B.svg", width = 15, height = 15)
   draw(ht, heatmap_legend_side = "right", heatmap_legend_list = list(
    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
   dev.off()
@@ -734,7 +734,7 @@ library(reshape2)
 
 #cns2 = read.csv("/home/jmartin/Documentos/exomas/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
-muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG1B.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG1B.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
 cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
 cm[is.na(cm)] = ""
@@ -750,7 +750,7 @@ oncoprint_df = print_paired_samples(onco_df,cnv_files, cnv_files_p, top_rows = n
 
 
 
-########## SUPP FIG 2 #########
+########## Ext_Data FIG 2 #########
 
 Función cuando hay que coger columnas pareadas
 ```{r}
@@ -842,7 +842,7 @@ oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for
           heatmap_legend_side = "bottom",heatmap_legend_list = list(
     Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
   )))
-  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG2.svg", width = 15, height = 20)
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_FIG2.svg", width = 15, height = 20)
   draw(ht, annotation_legend_side = "bottom",
           heatmap_legend_side = "bottom", heatmap_legend_list = list(
    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
@@ -867,7 +867,7 @@ library(reshape2)
 
 #cns2 = read.csv("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
-muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG2.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG2.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
 cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
 cm[is.na(cm)] = ""
@@ -884,7 +884,7 @@ oncoprint_df = print_paired_samples(onco_df,cnv_files, cnv_files_p, top_rows = n
 
 
 
-########## SUPP FIG 4 ###############333
+########## Ext_Data FIG 4 ###############333
 
 ```{r}
 
@@ -956,7 +956,7 @@ oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for
           heatmap_legend_side = "bottom",heatmap_legend_list = list(
     Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
   )))
-  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_FIG4.svg", width = 15, height = 15)
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_FIG4.svg", width = 15, height = 15)
   draw(ht, heatmap_legend_side = "right", heatmap_legend_list = list(
    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
   dev.off()
@@ -982,7 +982,7 @@ library(reshape2)
 
 #cns2 = read.csv("/home/jmartin/Documentos/exomas/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
-muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG4.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG4.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
 cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
 cm[is.na(cm)] = ""
@@ -997,7 +997,7 @@ oncoprint_df = print_paired_samples(onco_df,cnv_files, cnv_files_p, top_rows = n
 ```
 
 
-############# SUPP FIG5A #################
+############# Ext_Data FIG5A #################
 
 Función cuando hay que coger columnas pareadas
 ```{r}
@@ -1098,7 +1098,7 @@ oncoprint_columns <- function (oncoprint_df, col_split, top_rows=0, only_snv_for
           heatmap_legend_side = "bottom",heatmap_legend_list = list(
     Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"), title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")), direction = "horizontal"
   )))
-  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Supp_Fig5A.svg", width = 15, height = 20)
+  svg(file="/home/jmartin/Documents/articulo/scripts/figuras/Ext_Data_Fig5A.svg", width = 15, height = 20)
   draw(ht, annotation_legend_side = "bottom",
           heatmap_legend_side = "bottom", heatmap_legend_list = list(
    Legend(labels = c("SNV/InDel", "CNV Deletion", "CNV Amplification"),  title = "Type of mutation", legend_gp = gpar(fill = c("darkolivegreen4", "#3C5488FF", "#E64B35FF")),   labels_gp = gpar(fontsize = 16), title_gp = gpar(fontsize = 20), direction = "horizontal")))
@@ -1128,7 +1128,7 @@ library(reshape2)
 
 #cns2 = read.csv("/home/jmartin/Documents/EXOMAS/nuevos_exomas/TANDA3/GRAFICOS/tanda3_cnr.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
-muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Supp_FIG5A.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
+muts = read.csv("/home/jmartin/Documents/articulo/scripts/inputs/input_Ext_Data_FIG5A.txt", header = TRUE, sep = "\t", encoding = "ASCII", stringsAsFactors = FALSE)
 
 cm = acast(muts, GEN~MUESTRA, value.var="TYPE")
 cm[is.na(cm)] = ""
